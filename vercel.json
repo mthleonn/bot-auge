@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "src/bot.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/health",
+      "dest": "src/healthCheck.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "src/bot.js"
+    }
+  ],
+  "env": {
+    "TELEGRAM_BOT_TOKEN": "@telegram_bot_token",
+    "GROUP_CHAT_ID": "@group_chat_id",
+    "DUVIDAS_GROUP_CHAT_ID": "@duvidas_group_chat_id",
+    "DUVIDAS_GROUP_LINK": "@duvidas_group_link",
+    "MENTORIA_LINK": "@mentoria_link",
+    "ADMIN_IDS": "@admin_ids",
+    "DB_PATH": "@db_path",
+    "TIMEZONE": "@timezone",
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "src/bot.js": {
+      "maxDuration": 30
+    }
+  }
+}
