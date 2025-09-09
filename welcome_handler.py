@@ -29,37 +29,33 @@ class WelcomeHandler:
         # Configurações de mensagens
         self.welcome_messages = {
             'main_group': {
-                'title': '🎉 Bem-vindo(a) ao Grupo Auge! 🎉',
+                'title': '🎯 Bem-vindo(a) ao Auge Traders! 🎯',
                 'message': '''Olá {name}! 👋
 
-🚀 Seja muito bem-vindo(a) ao nosso grupo exclusivo!
+📊 Seja muito bem-vindo(a) ao **Auge Traders**!
 
-📋 **Como funciona nosso grupo:**
-• Compartilhamos estratégias comprovadas de vendas
-• Dicas práticas de marketing digital
-• Networking entre empreendedores
-• Conteúdo exclusivo e sempre atualizado
-• Suporte da nossa comunidade ativa
+🚀 **Aqui você receberá:**
+• Análises diárias do **pré-mercado** às 6h
+• Possíveis **entradas e saídas** pelos mentores **Rafael** e **Daniel**
+• Estratégias testadas e comprovadas
+• Acompanhamento em tempo real
+• Comunidade de traders consistentes
 
 💡 **Para aproveitar ao máximo:**
-1️⃣ Apresente-se brevemente
-2️⃣ Participe das discussões
-3️⃣ Compartilhe suas experiências
-4️⃣ Faça networking com outros membros
-5️⃣ Acesse nossos materiais exclusivos
+1️⃣ Fique atento às análises matinais
+2️⃣ Siga o plano de trade
+3️⃣ Mantenha a disciplina
+4️⃣ Participe das discussões
+5️⃣ Tire suas dúvidas no grupo específico
 
-🎯 **Links importantes:**
-• Grupo de Boas-vindas: Para se apresentar e conhecer outros membros
-• Mentoria Auge: Acelere seus resultados com acompanhamento personalizado
+⏰ **Análises enviadas às 6h** todos os dias úteis!
 
-❓ Dúvidas? Use o grupo de suporte: @AugeDuvidas
+🎯 **Acelere seus resultados** com nossa mentoria completa!
 
-🔥 Vamos crescer juntos! 🔥''',
+💪 Vamos conquistar a consistência juntos! 🔥''',
                 'buttons': [
-                    [InlineKeyboardButton("👋 Grupo de Boas-vindas", url="https://t.me/AugeBoasVindas")],
-                    [InlineKeyboardButton("🎯 Mentoria Auge", url="https://auge.com.br/mentoria")],
-                    [InlineKeyboardButton("💬 Grupo de Dúvidas", url="https://t.me/AugeDuvidas")],
-                    [InlineKeyboardButton("🌐 Site Oficial", url="https://auge.com.br")]
+                    [InlineKeyboardButton("🚀 Mentoria Completa", url="https://www.mentoriaaugetraders.com.br/")],
+                    [InlineKeyboardButton("❓ Grupo de Dúvidas", url="https://t.me/+YgugjrIQHt1lNGNh")]
                 ]
             },
             'duvidas_group': {
