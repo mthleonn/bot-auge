@@ -237,10 +237,10 @@ async def initialize_components():
         logger.info("✅ Banco de dados inicializado")
         
         # Inicializa handlers
-        admin_handler = AdminHandler(database)
+        admin_handler = AdminHandler(None, database)  # bot será definido depois
         logger.info("✅ AdminHandler inicializado")
         
-        funnel_handler = FunnelHandler(database)
+        funnel_handler = FunnelHandler(None, database)  # bot será definido depois
         logger.info("✅ FunnelHandler inicializado")
         
         welcome_handler = WelcomeHandler(database, funnel_handler)
@@ -249,7 +249,7 @@ async def initialize_components():
         link_tracker = LinkTracker(database)
         logger.info("✅ LinkTracker inicializado")
         
-        message_handler = CustomMessageHandler(database, admin_handler, link_tracker)
+        message_handler = CustomMessageHandler(None, database, admin_handler, link_tracker)
         logger.info("✅ MessageHandler inicializado")
         
         # Inicia tarefas em background

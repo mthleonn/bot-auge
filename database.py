@@ -285,6 +285,24 @@ class Database:
             logger.error(f"❌ Erro ao buscar usuários ativos: {e}")
             return []
     
+    def get_all_users(self) -> List[Dict]:
+        """Obtém todos os usuários (ativos e inativos)"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    SELECT user_id, first_name, username, joined_at, funnel_step, is_active
+                    FROM users
+                ''')
+                
+                return [dict(row) for row in cursor.fetchall()]
+                
+        except Exception as e:
+            logger.error(f"❌ Erro ao buscar todos os usuários: {e}")
+            return []
+    
     def close(self):
         """Fecha a conexão com o banco de dados"""
         # SQLite não precisa de fechamento explícito quando usando context manager
