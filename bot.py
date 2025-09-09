@@ -34,6 +34,29 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Mostra o status do bot"""
     await update.message.reply_text('✅ Bot funcionando perfeitamente no Railway!')
 
+# Função para dar boas-vindas a novos membros
+async def welcome_new_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Dá boas-vindas a novos membros do grupo"""
+    for member in update.message.new_chat_members:
+        if member.id != context.bot.id:  # Não dar boas-vindas ao próprio bot
+            welcome_text = f"🎉 Bem-vindo(a) ao grupo, {member.first_name}!\n\n✨ Esperamos que você se divirta aqui!\n\nDigite /help para ver os comandos disponíveis."
+            await update.message.reply_text(welcome_text)
+        else:
+            # Mensagem quando o bot é adicionado ao grupo
+            bot_welcome = """
+🤖 **Olá! Sou o Bot Auge!**
+
+✅ Fui adicionado com sucesso ao grupo!
+
+Comandos disponíveis:
+/start - Iniciar
+/help - Ajuda
+/status - Status do bot
+
+Para funcionar perfeitamente, me adicione como administrador! 👑
+            """
+            await update.message.reply_text(bot_welcome, parse_mode='Markdown')
+
 # Função para mensagens de texto
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Responde a mensagens de texto"""
@@ -43,6 +66,37 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log de erros causados por Updates."""
     logger.error(msg="Exception while handling an update:", exc_info=context.error)
+
+# Adicione esta função para detectar quando o bot é adicionado a um grupo
+async def new_chat_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Mensagem de boas-vindas quando o bot é adicionado ao grupo"""
+    for member in update.message.new_chat_members:
+        if member.id == context.bot.id:
+            welcome_text = """
+🤖 **Olá! Sou o Bot Auge!**
+
+✅ Fui adicionado com sucesso ao grupo!
+
+Comandos disponíveis:
+/start - Iniciar
+/help - Ajuda
+/status - Status do bot
+
+Para funcionar perfeitamente, me adicione como administrador! 👑
+            """
+            await update.message.reply_text(welcome_text, parse_mode='Markdown')
+
+# Adicione esta função para mensagens de boas-vindas a novos membros
+async def welcome_new_members(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Dá boas-vindas a novos membros do grupo"""
+    for member in update.message.new_chat_members:
+        if member.id != context.bot.id:  # Não dar boas-vindas ao próprio bot
+            welcome_text = f"🎉 Bem-vindo(a) ao grupo, {member.first_name}!"
+            await update.message.reply_text(welcome_text)
+
+# No main(), adicione estes handlers:
+application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, new_chat_members))
+application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_members))
 
 def main() -> None:
     """Função principal para iniciar o bot"""
@@ -60,6 +114,9 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("status", status))
+    
+    # Handler para novos membros (boas-vindas)
+    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_members))
     
     # Handler para mensagens de texto (echo)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
