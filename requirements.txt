@@ -1,4 +1,7 @@
 python-telegram-bot==20.7
 requests==2.31.0
+python-dotenv==1.0.0
+aiofiles==23.2.1
+aiohttp==3.9.1
 setuptools>=65.0.0
 wheel>=0.37.0
