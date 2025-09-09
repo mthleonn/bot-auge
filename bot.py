@@ -174,6 +174,33 @@ async def links_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Erro no comando links: {e}")
         await update.message.reply_text("❌ Erro ao obter estatísticas de links.")
 
+async def test_welcome_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando /testwelcome - Testa mensagem de boas-vindas"""
+    try:
+        user = update.effective_user
+        chat = update.effective_chat
+        
+        logger.info(f"🧪 Teste de boas-vindas solicitado por {user.first_name} no chat {chat.id}")
+        
+        if welcome_handler:
+            # Simula um novo membro (o próprio usuário)
+            fake_member = type('Member', (), {
+                'id': user.id,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'username': user.username
+            })()
+            
+            await welcome_handler._send_welcome_message(update, context, fake_member, chat)
+            logger.info(f"✅ Mensagem de teste enviada para {user.first_name}")
+        else:
+            await update.message.reply_text("❌ WelcomeHandler não está inicializado!")
+            logger.error("❌ WelcomeHandler não inicializado para teste")
+            
+    except Exception as e:
+        logger.error(f"Erro no comando /testwelcome: {e}")
+        await update.message.reply_text(f"❌ Erro ao testar boas-vindas: {e}")
+
 async def process_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Processa todas as mensagens através do MessageHandler"""
     try:
@@ -264,6 +291,7 @@ def main():
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("stats", stats_command))
     application.add_handler(CommandHandler("links", links_command))
+    application.add_handler(CommandHandler("testwelcome", test_welcome_command))
     
     # Handlers de admin (serão processados pelo AdminHandler)
     application.add_handler(CommandHandler("broadcast", lambda u, c: admin_handler.handle_broadcast(u, c) if admin_handler else None))
@@ -273,9 +301,16 @@ def main():
     application.add_handler(CommandHandler("adminhelp", lambda u, c: admin_handler.handle_admin_help(u, c) if admin_handler else None))
     
     # Handler para novos membros
+    async def handle_new_members_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        logger.info(f"🔍 Novo membro detectado! Chat: {update.effective_chat.id}, Membros: {[m.first_name for m in update.message.new_chat_members]}")
+        if welcome_handler:
+            await welcome_handler.handle_new_members(update, context)
+        else:
+            logger.error("❌ WelcomeHandler não inicializado!")
+    
     application.add_handler(MessageHandler(
         filters.StatusUpdate.NEW_CHAT_MEMBERS, 
-        lambda u, c: welcome_handler.handle_new_members(u, c) if welcome_handler else None
+        handle_new_members_wrapper
     ))
     
     # Handler para todas as mensagens de texto

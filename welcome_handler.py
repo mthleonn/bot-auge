@@ -16,6 +16,16 @@ class WelcomeHandler:
         self.main_group_id = int(os.getenv('GROUP_CHAT_ID', '0'))
         self.duvidas_group_id = int(os.getenv('DUVIDAS_GROUP_CHAT_ID', '0'))
         
+        # Log das configurações
+        self.logger.info(f"🔧 WelcomeHandler configurado:")
+        self.logger.info(f"   • Grupo principal ID: {self.main_group_id}")
+        self.logger.info(f"   • Grupo dúvidas ID: {self.duvidas_group_id}")
+        
+        if self.main_group_id == 0:
+            self.logger.warning("⚠️ GROUP_CHAT_ID não configurado!")
+        if self.duvidas_group_id == 0:
+            self.logger.warning("⚠️ DUVIDAS_GROUP_CHAT_ID não configurado!")
+        
         # Configurações de mensagens
         self.welcome_messages = {
             'main_group': {
