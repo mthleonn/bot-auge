@@ -249,7 +249,7 @@ async def initialize_components():
         link_tracker = LinkTracker(database)
         logger.info("✅ LinkTracker inicializado")
         
-        message_handler = CustomMessageHandler(None, database, admin_handler, link_tracker)
+        message_handler = CustomMessageHandler(None, database, admin_handler)
         logger.info("✅ MessageHandler inicializado")
         
         # Inicia tarefas em background
