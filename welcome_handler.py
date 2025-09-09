@@ -34,23 +34,30 @@ class WelcomeHandler:
 
 🚀 Seja muito bem-vindo(a) ao nosso grupo exclusivo!
 
-📈 Aqui você vai encontrar:
-• Estratégias comprovadas de vendas
-• Dicas de marketing digital
-• Networking com outros empreendedores
-• Conteúdo exclusivo e atualizado
+📋 **Como funciona nosso grupo:**
+• Compartilhamos estratégias comprovadas de vendas
+• Dicas práticas de marketing digital
+• Networking entre empreendedores
+• Conteúdo exclusivo e sempre atualizado
+• Suporte da nossa comunidade ativa
 
-💡 Para aproveitar ao máximo:
+💡 **Para aproveitar ao máximo:**
 1️⃣ Apresente-se brevemente
 2️⃣ Participe das discussões
 3️⃣ Compartilhe suas experiências
-4️⃣ Faça networking
+4️⃣ Faça networking com outros membros
+5️⃣ Acesse nossos materiais exclusivos
+
+🎯 **Links importantes:**
+• Grupo de Boas-vindas: Para se apresentar e conhecer outros membros
+• Mentoria Auge: Acelere seus resultados com acompanhamento personalizado
 
 ❓ Dúvidas? Use o grupo de suporte: @AugeDuvidas
 
 🔥 Vamos crescer juntos! 🔥''',
                 'buttons': [
-                    [InlineKeyboardButton("📚 Material Gratuito", url="https://auge.com.br/material")],
+                    [InlineKeyboardButton("👋 Grupo de Boas-vindas", url="https://t.me/AugeBoasVindas")],
+                    [InlineKeyboardButton("🎯 Mentoria Auge", url="https://auge.com.br/mentoria")],
                     [InlineKeyboardButton("💬 Grupo de Dúvidas", url="https://t.me/AugeDuvidas")],
                     [InlineKeyboardButton("🌐 Site Oficial", url="https://auge.com.br")]
                 ]
