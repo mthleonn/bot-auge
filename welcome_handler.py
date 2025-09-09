@@ -29,30 +29,18 @@ class WelcomeHandler:
         # Configurações de mensagens
         self.welcome_messages = {
             'main_group': {
-                'title': '🎯 Bem-vindo(a) ao Auge Traders! 🎯',
-                'message': '''Olá {name}! 👋
-
-📊 Seja muito bem-vindo(a) ao **Auge Traders**!
-
-🚀 **Aqui você receberá:**
-• Análises diárias do **pré-mercado** às 6h
-• Possíveis **entradas e saídas** pelos mentores **Rafael** e **Daniel**
-• Estratégias testadas e comprovadas
-• Acompanhamento em tempo real
-• Comunidade de traders consistentes
-
-💡 **Para aproveitar ao máximo:**
-1️⃣ Fique atento às análises matinais
-2️⃣ Siga o plano de trade
-3️⃣ Mantenha a disciplina
-4️⃣ Participe das discussões
-5️⃣ Tire suas dúvidas no grupo específico
-
-⏰ **Análises enviadas às 6h** todos os dias úteis!
-
-🎯 **Acelere seus resultados** com nossa mentoria completa!
-
-💪 Vamos conquistar a consistência juntos! 🔥''',
+                'title': '👋 Bem-vindo(a) ao Auge Traders!',
+                'message': '''👋 Olá {name}! Seja bem-vindo(a) ao grupo **Auge Traders**!  
+ 
+Aqui você receberá **análises do pré-mercado** diariamente, enviadas pelo **Rafael** e pelo **Daniel**, com insights sobre **entradas e saídas** para você acompanhar.  
+ 
+💡 Para tirar dúvidas ou interagir com outros membros, acesse nosso grupo exclusivo:  
+`https://t.me/+YgugjrIQHt1lNGNh`   
+ 
+🚀 Quer se aprofundar e aprender com nossa mentoria completa?  
+`https://www.mentoriaaugetraders.com.br/`   
+ 
+Fique atento(a), o mercado não espera! 📈''',
                 'buttons': [
                     [InlineKeyboardButton("🚀 Mentoria Completa", url="https://www.mentoriaaugetraders.com.br/")],
                     [InlineKeyboardButton("❓ Grupo de Dúvidas", url="https://t.me/+YgugjrIQHt1lNGNh")]
@@ -79,18 +67,18 @@ class WelcomeHandler:
                 ]
             },
             'other_group': {
-                'title': '👋 Olá! Sou o Bot Auge!',
+                'title': '👋 Bem-vindo(a)!',
                 'message': '''Olá {name}! 👋
 
-Obrigado por me adicionar ao grupo!
+🎯 **Bem-vindo(a) ao nosso grupo!**
 
-🤖 Eu sou o Bot Auge e posso ajudar com:
-• Mensagens de boas-vindas
-• Moderação básica
-• Estatísticas do grupo
-• Links úteis
+📈 Aqui você encontrará:
+• Conteúdo de qualidade sobre trading
+• Análises e estratégias
+• Comunidade de traders
+• Suporte especializado
 
-⚙️ Configure-me como administrador para funcionar melhor!
+💪 Vamos crescer juntos!
 
 📞 Suporte: @AugeSuporte''',
                 'buttons': [
@@ -109,7 +97,8 @@ Obrigado por me adicionar ao grupo!
             for member in new_members:
                 # Ignora se for o próprio bot
                 if member.id == context.bot.id:
-                    await self._handle_bot_added_to_group(update, context)
+                    # Bot adicionado ao grupo - não enviar mensagem
+                    self.logger.info(f"Bot adicionado ao grupo: {chat.title} (ID: {chat.id})")
                     continue
                 
                 # Adiciona usuário ao banco de dados
@@ -175,46 +164,7 @@ Obrigado por me adicionar ao grupo!
         except Exception as e:
             self.logger.error(f"Erro ao enviar mensagem de boas-vindas: {e}")
     
-    async def _handle_bot_added_to_group(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Processa quando o bot é adicionado a um grupo"""
-        try:
-            chat = update.effective_chat
-            
-            # Mensagem quando bot é adicionado
-            bot_welcome = '''🤖 **Bot Auge Ativado!** 🤖
-
-✅ Olá! Eu sou o Bot Auge e agora estou ativo neste grupo!
-
-🔧 **Funcionalidades disponíveis:**
-• Mensagens de boas-vindas automáticas
-• Moderação de spam
-• Comandos administrativos
-• Estatísticas do grupo
-• Sistema de funil automático
-
-⚙️ **Para melhor funcionamento:**
-1. Me torne administrador
-2. Configure as variáveis de ambiente
-3. Use /help para ver comandos
-
-🚀 **Vamos começar!**'''
-            
-            keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("📖 Comandos", callback_data="help_commands")],
-                [InlineKeyboardButton("🌐 Site Auge", url="https://auge.com.br")]
-            ])
-            
-            await context.bot.send_message(
-                chat_id=chat.id,
-                text=bot_welcome,
-                parse_mode='Markdown',
-                reply_markup=keyboard
-            )
-            
-            self.logger.info(f"Bot adicionado ao grupo: {chat.title} (ID: {chat.id})")
-            
-        except Exception as e:
-            self.logger.error(f"Erro ao processar adição do bot: {e}")
+    # Função removida - bot não envia mais mensagem quando adicionado a grupos
     
     def _get_group_type(self, chat_id):
         """Determina o tipo de grupo baseado no ID"""

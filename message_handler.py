@@ -142,8 +142,8 @@ class MessageHandler:
             welcome_text += "📚 Use /help para ver os comandos disponíveis."
         else:
             # Mensagem privada
-            welcome_text = f"🤖 Olá {first_name}! Sou o Bot Auge!\n\n"
-            welcome_text += "✅ Estou funcionando perfeitamente!\n\n"
+            welcome_text = f"🎯 Olá {first_name}! Bot Auge Traders ativo!\n\n"
+            welcome_text += "✅ Sistema funcionando perfeitamente!\n\n"
             welcome_text += "📋 Use /help para ver os comandos disponíveis."
         
         await update.message.reply_text(welcome_text)

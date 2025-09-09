@@ -58,11 +58,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_html(
         f"Olá {user.mention_html()}!\n\n"
-        f"🤖 Eu sou o Bot Auge!\n\n"
-        f"📈 Estou aqui para ajudar com:\n"
-        f"• Mensagens de boas-vindas automáticas\n"
+        f"🎯 **Bot Auge Traders ativo!**\n\n"
+        f"📈 Funcionalidades disponíveis:\n"
+        f"• Sistema de boas-vindas personalizado\n"
         f"• Moderação avançada do grupo\n"
-        f"• Sistema de funil automático\n"
+        f"• Funil automático de mensagens\n"
         f"• Estatísticas detalhadas\n"
         f"• Rastreamento de links\n\n"
         f"Use /help para ver todos os comandos disponíveis."
