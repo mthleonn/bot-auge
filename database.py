@@ -62,6 +62,22 @@ class Database:
                 )
             ''')
             
+            # Tabela de configurações
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS bot_settings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    setting_key TEXT UNIQUE NOT NULL,
+                    setting_value TEXT NOT NULL,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # Inserir configuração padrão do link da reunião
+            cursor.execute('''
+                INSERT OR IGNORE INTO bot_settings (setting_key, setting_value)
+                VALUES ('meeting_link', 'https://meet.google.com/auge-traders-weekly')
+            ''')
+            
             conn.commit()
             logger.info("✅ Banco de dados inicializado com sucesso")
     
@@ -303,6 +319,52 @@ class Database:
             logger.error(f"❌ Erro ao buscar todos os usuários: {e}")
             return []
     
+    def get_setting(self, setting_key: str) -> Optional[str]:
+        """Obtém uma configuração do bot"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    SELECT setting_value FROM bot_settings
+                    WHERE setting_key = ?
+                ''', (setting_key,))
+                
+                result = cursor.fetchone()
+                return result[0] if result else None
+                
+        except Exception as e:
+            logger.error(f"❌ Erro ao obter configuração {setting_key}: {e}")
+            return None
+    
+    def set_setting(self, setting_key: str, setting_value: str) -> bool:
+        """Define uma configuração do bot"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    INSERT OR REPLACE INTO bot_settings (setting_key, setting_value, updated_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                ''', (setting_key, setting_value))
+                
+                conn.commit()
+                logger.info(f"✅ Configuração {setting_key} atualizada")
+                return True
+                
+        except Exception as e:
+            logger.error(f"❌ Erro ao definir configuração {setting_key}: {e}")
+            return False
+    
+    def get_meeting_link(self) -> str:
+        """Obtém o link da reunião atual"""
+        link = self.get_setting('meeting_link')
+        return link or 'https://meet.google.com/auge-traders-weekly'
+    
+    def set_meeting_link(self, new_link: str) -> bool:
+        """Define um novo link da reunião"""
+        return self.set_setting('meeting_link', new_link)
+
     def close(self):
         """Fecha a conexão com o banco de dados"""
         # SQLite não precisa de fechamento explícito quando usando context manager

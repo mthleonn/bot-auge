@@ -35,7 +35,7 @@ class WelcomeHandler:
 Aqui você receberá **análises do pré-mercado** diariamente, enviadas pelo **Rafael** e pelo **Daniel**, com insights sobre **entradas e saídas** para você acompanhar.  
  
 💡 Para tirar dúvidas ou interagir com outros membros, acesse nosso grupo exclusivo:  
-`https://t.me/+YgugjrIQHt1lNGNh`   
+`https://t.me/+5ueqV0IGf7NlODIx`   
  
 🚀 Quer se aprofundar e aprender com nossa mentoria completa?  
 `https://www.mentoriaaugetraders.com.br/`   
@@ -43,27 +43,43 @@ Aqui você receberá **análises do pré-mercado** diariamente, enviadas pelo **
 Fique atento(a), o mercado não espera! 📈''',
                 'buttons': [
                     [InlineKeyboardButton("🚀 Mentoria Completa", url="https://www.mentoriaaugetraders.com.br/")],
-                    [InlineKeyboardButton("❓ Grupo de Dúvidas", url="https://t.me/+YgugjrIQHt1lNGNh")]
+                    [InlineKeyboardButton("❓ Grupo de Dúvidas", url="https://t.me/+5ueqV0IGf7NlODIx")]
                 ]
             },
             'duvidas_group': {
                 'title': '❓ Bem-vindo(a) ao Suporte Auge! ❓',
-                'message': '''Olá {name}! 👋
+                'message': '''💬 Bem-vindo(a) ao **Grupo de Dúvidas** da Auge Análises!
 
-🆘 Este é o grupo de suporte e dúvidas!
+🎯 Aqui você pode:
+• **Tirar suas dúvidas** sobre análises e estratégias
+• **Compartilhar seus estudos** e aprendizados
+• **Mostrar seus ganhos** e conquistas no trading
+• **Interagir com outros traders** da comunidade
+• **Receber suporte** da nossa equipe especializada
 
-📋 Como funciona:
-• Faça suas perguntas de forma clara
-• Aguarde a resposta da nossa equipe
-• Ajude outros membros quando possível
-• Mantenha o foco em dúvidas técnicas
+📚 **Compartilhe seus estudos:**
+• Análises que você fez
+• Setups que está testando
+• Livros e materiais que recomenda
+• Dúvidas sobre indicadores
 
-⚡ Resposta rápida garantida!
+💰 **Mostre seus resultados:**
+• Prints de operações positivas
+• Evolução da sua curva de equity
+• Conquistas e marcos importantes
 
-🔙 Voltar ao grupo principal: @AugeGrupo''',
+📋 **Regras importantes:**
+• Seja respeitoso com todos os membros
+• Evite spam ou mensagens repetitivas
+• Foque em conteúdo relacionado ao trading
+• Não hesite em fazer perguntas!
+
+🚀 **Vamos crescer e evoluir juntos!** 📈
+
+💡 *Lembre-se: não existe pergunta boba, apenas traders que não perguntam!*''',
                 'buttons': [
                     [InlineKeyboardButton("🔙 Grupo Principal", url="https://t.me/AugeGrupo")],
-                    [InlineKeyboardButton("📖 FAQ", url="https://auge.com.br/faq")]
+                    [InlineKeyboardButton("🚀 Mentoria Completa", url="https://www.mentoriaaugetraders.com.br/")]
                 ]
             },
             'other_group': {

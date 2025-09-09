@@ -65,7 +65,7 @@ Bot oficial do Telegram para o **Grupo de Análises - Auge**, especializado em D
    TELEGRAM_BOT_TOKEN=seu_token_aqui
    GROUP_CHAT_ID=id_do_seu_grupo
    DUVIDAS_GROUP_LINK=https://t.me/seu_grupo_duvidas
-   MENTORIA_LINK=https://sua-mentoria-link.com
+   MENTORIA_LINK=https://www.mentoriaaugetraders.com.br/
    ADMIN_IDS=123456789,987654321
    ```
 

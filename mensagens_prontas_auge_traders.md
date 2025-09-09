@@ -17,7 +17,7 @@ Olá {name}! 👋
 
 🚀 Acelere seus resultados:
 [🎯 Mentoria Completa](https://www.mentoriaaugetraders.com.br/)
-[❓ Grupo de Dúvidas](https://t.me/+YgugjrIQHt1lNGNh)
+[❓ Grupo de Dúvidas](https://t.me/+5ueqV0IGf7NlODIx)
 
 💪 Vamos conquistar a consistência juntos!
 ```
@@ -37,7 +37,7 @@ Olá {name}! 🙌
 
 🎯 **Links importantes:**
 [🚀 Mentoria Auge](https://www.mentoriaaugetraders.com.br/)
-[💬 Tire suas dúvidas](https://t.me/+YgugjrIQHt1lNGNh)
+[💬 Tire suas dúvidas](https://t.me/+5ueqV0IGf7NlODIx)
 
 📊 Prepare-se para operar com **consistência**!
 ```
@@ -125,7 +125,7 @@ Olá {name}! 🙌
 🤝 **Juntos somos mais fortes!**
 
 ❓ **Dúvidas?** Entre no nosso grupo:
-[💬 Grupo de Dúvidas](https://t.me/+YgugjrIQHt1lNGNh)
+[💬 Grupo de Dúvidas](https://t.me/+5ueqV0IGf7NlODIx)
 ```
 
 ### Mensagem 8 - Lembrete Grupo de Dúvidas
@@ -140,7 +140,7 @@ Olá {name}! 🙌
 
 👥 **Nossa equipe** está pronta para ajudar!
 
-[💬 Acesse o Grupo de Dúvidas](https://t.me/+YgugjrIQHt1lNGNh)
+[💬 Acesse o Grupo de Dúvidas](https://t.me/+5ueqV0IGf7NlODIx)
 
 🚀 **Não fique com dúvidas - tire agora!**
 ```

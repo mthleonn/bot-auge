@@ -85,7 +85,7 @@ class FunnelHandler {
     }
     
     getFunnelMessage24h() {
-        const mentoriaLink = process.env.MENTORIA_LINK || 'https://sua-mentoria-link.com';
+        const mentoriaLink = process.env.MENTORIA_LINK || 'https://www.mentoriaaugetraders.com.br/';
         
         const text = `🚀 Já está por dentro das análises da Auge?
 Agora é hora de dar o próximo passo e se tornar um trader ainda mais preparado!
@@ -121,9 +121,9 @@ Veja o que nossos alunos dizem sobre a *Mentoria Day Trade*:
 💬 "Passei a operar com mais confiança e hoje tenho muito mais consistência nos meus trades."
 
 🎯 Quer evoluir também?
-🔗 [Garanta sua vaga na mentoria agora](${process.env.MENTORIA_LINK || 'https://sua-mentoria-link.com'})`;
+🔗 [Garanta sua vaga na mentoria agora](${process.env.MENTORIA_LINK || 'https://www.mentoriaaugetraders.com.br/'})`;
         
-        const mentoriaLink = process.env.MENTORIA_LINK || 'https://sua-mentoria-link.com';
+        const mentoriaLink = process.env.MENTORIA_LINK || 'https://www.mentoriaaugetraders.com.br/';
         
         const options = {
             parse_mode: 'Markdown',
@@ -160,7 +160,7 @@ Depois de hoje, as vagas só abrirão novamente no próximo mês.
 
 👇 *Clique agora e garante sua transformação:*`;
         
-        const mentoriaLink = process.env.MENTORIA_LINK || 'https://sua-mentoria-link.com';
+        const mentoriaLink = process.env.MENTORIA_LINK || 'https://www.mentoriaaugetraders.com.br/';
         
         const options = {
             parse_mode: 'Markdown',

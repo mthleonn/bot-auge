@@ -35,7 +35,7 @@ GROUP_CHAT_ID=-1001234567890
 
 # Configure seus links
 DUVIDAS_GROUP_LINK=https://t.me/seu_grupo_duvidas
-MENTORIA_LINK=https://sua-mentoria-link.com
+MENTORIA_LINK=https://www.mentoriaaugetraders.com.br/
 
 # Seu ID de usuário (para ser admin)
 ADMIN_IDS=123456789

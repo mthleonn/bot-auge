@@ -82,6 +82,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /status - Status do bot
 /stats - Estatísticas do grupo
 /links - Estatísticas de links
+/testwelcome - Testa mensagem de boas-vindas
     """
     
     if is_admin:
@@ -93,14 +94,18 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /test - Testa funcionalidades
 /setphoto - Define foto do bot
 /adminhelp - Ajuda completa de admin
+/testmsg - Mostra todas as mensagens automáticas
+/reuniao - Envia lembrete da reunião semanal
+/setmeeting <link> - Define novo link da reunião
         """
     
     help_text += """
 
 **Informações:**
 • Bot desenvolvido para o grupo Auge
-• Versão: 2.0 - Completo
+• Versão: 2.1 - Atualizado
 • Suporte: @AugeSuporte
+• Reunião semanal: Segundas às 19h
     """
     
     await update.message.reply_text(help_text, parse_mode='Markdown')
@@ -225,6 +230,146 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
         except:
             pass
 
+async def show_all_automated_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Mostra todas as mensagens automáticas do sistema"""
+    try:
+        messages_info = """
+🧪 **Todas as Mensagens Automáticas do Bot**
+
+📅 **Mensagens Diárias:**
+• Mensagem diária às 06:00 (timezone: America/Sao_Paulo)
+• Conteúdo: Análises e informações do dia
+
+📈 **Funil de Mensagens:**
+• 24h após entrada: Mensagem de engajamento
+• 48h após entrada: Convite para mentoria
+• 72h após entrada: Lembrete de participação
+
+👋 **Mensagens de Boas-vindas:**
+• Automática para novos membros
+• Personalizada por tipo de grupo
+
+📞 **Reunião Semanal:**
+• Toda segunda-feira às 19:00
+• Lembrete enviado às 18:00
+• Link da reunião incluído
+
+🔧 **Para testar individualmente:**
+• `/testwelcome` - Testa boas-vindas
+• `/test` - Teste geral do sistema
+• `/admin test` - Teste administrativo
+        """
+        
+        await update.message.reply_text(messages_info, parse_mode='Markdown')
+        
+        # Enviar exemplo de cada tipo de mensagem
+        if funnel_handler:
+            await update.message.reply_text("\n📨 **Exemplo - Mensagem 24h:**")
+            try:
+                await funnel_handler.send_24h_message(update.effective_chat.id, update.effective_user.first_name)
+            except:
+                await update.message.reply_text("Exemplo de mensagem 24h não disponível")
+            
+            await asyncio.sleep(1)
+            await update.message.reply_text("\n📨 **Exemplo - Mensagem 48h:**")
+            try:
+                await funnel_handler.send_48h_message(update.effective_chat.id, update.effective_user.first_name)
+            except:
+                await update.message.reply_text("Exemplo de mensagem 48h não disponível")
+            
+            await asyncio.sleep(1)
+            await update.message.reply_text("\n📨 **Exemplo - Mensagem 72h:**")
+            try:
+                await funnel_handler.send_72h_message(update.effective_chat.id, update.effective_user.first_name)
+            except:
+                await update.message.reply_text("Exemplo de mensagem 72h não disponível")
+        
+    except Exception as e:
+        logger.error(f"Erro ao mostrar mensagens automáticas: {e}")
+        await update.message.reply_text("❌ Erro ao carregar mensagens automáticas.")
+
+async def send_meeting_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Envia lembrete da reunião semanal"""
+    try:
+        # Obter link da reunião do banco de dados
+        meeting_link = database.get_meeting_link() if database else "https://meet.google.com/auge-traders-weekly"
+        
+        meeting_message = f"""
+📞 **REUNIÃO SEMANAL AUGE TRADERS** 📞
+
+🗓️ **Toda Segunda-feira às 19:00**
+⏰ **Horário:** 19:00 (Brasília)
+🔗 **Link:** {meeting_link}
+
+💡 **Pauta desta semana:**
+• Review da semana anterior
+• Estratégias para próxima semana
+• Tire suas dúvidas ao vivo
+• Networking com outros traders
+
+👥 **Presença confirmada?** Nos vemos lá!
+        """
+        
+        await update.message.reply_text(meeting_message, parse_mode='Markdown')
+        
+    except Exception as e:
+        logger.error(f"Erro ao enviar lembrete da reunião: {e}")
+        await update.message.reply_text("❌ Erro ao enviar lembrete da reunião.")
+
+async def set_meeting_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Define novo link da reunião"""
+    try:
+        if not context.args:
+            current_link = database.get_meeting_link() if database else os.getenv('MEETING_LINK', 'Não definido')
+            help_message = f"""
+🔗 **Configurar Link da Reunião**
+
+**Link atual:** {current_link}
+
+**Como usar:**
+`/setmeeting https://meet.google.com/seu-novo-link`
+
+**Exemplo:**
+`/setmeeting https://meet.google.com/abc-defg-hij`
+            """
+            await update.message.reply_text(help_message, parse_mode='Markdown')
+            return
+        
+        new_link = context.args[0]
+        
+        # Validar se é um link válido
+        if not (new_link.startswith('http://') or new_link.startswith('https://')):
+            await update.message.reply_text("❌ Por favor, forneça um link válido (deve começar com http:// ou https://)")
+            return
+        
+        # Salvar no banco de dados
+        if database:
+            database.set_meeting_link(new_link)
+            success_message = f"""
+✅ **Link da reunião atualizado!**
+
+🔗 **Novo link:** {new_link}
+
+📝 **Alteração salva no banco de dados.**
+            """
+        else:
+            success_message = f"""
+⚠️ **Link temporariamente atualizado!**
+
+🔗 **Novo link:** {new_link}
+
+📝 **Nota:** Banco de dados não disponível. Para que a alteração seja permanente, você precisa atualizar a variável de ambiente `MEETING_LINK` no seu servidor.
+            """
+        
+        await update.message.reply_text(success_message, parse_mode='Markdown')
+        
+        # Log da alteração
+        logger.info(f"Link da reunião alterado por {update.effective_user.first_name}: {new_link}")
+        
+    except Exception as e:
+        logger.error(f"Erro ao definir link da reunião: {e}")
+        await update.message.reply_text("❌ Erro ao definir link da reunião.")
+
 
 
 async def initialize_components():
@@ -293,12 +438,68 @@ def main():
     application.add_handler(CommandHandler("links", links_command))
     application.add_handler(CommandHandler("testwelcome", test_welcome_command))
     
-    # Handlers de admin (serão processados pelo AdminHandler)
-    application.add_handler(CommandHandler("broadcast", lambda u, c: admin_handler.handle_broadcast(u, c) if admin_handler else None))
-    application.add_handler(CommandHandler("users", lambda u, c: admin_handler.handle_users(u, c) if admin_handler else None))
-    application.add_handler(CommandHandler("test", lambda u, c: admin_handler.handle_test(u, c) if admin_handler else None))
-    application.add_handler(CommandHandler("setphoto", lambda u, c: admin_handler.handle_setphoto(u, c) if admin_handler else None))
-    application.add_handler(CommandHandler("adminhelp", lambda u, c: admin_handler.handle_admin_help(u, c) if admin_handler else None))
+    # Comando testmsg melhorado
+    async def testmsg_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if admin_handler and await admin_handler.is_admin(update.effective_user.id):
+            await show_all_automated_messages(update, context)
+        else:
+            await update.message.reply_text("❌ Comando disponível apenas para administradores.")
+    
+    application.add_handler(CommandHandler("testmsg", testmsg_wrapper))
+    
+    # Comandos para reunião semanal
+    async def reuniao_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if admin_handler and await admin_handler.is_admin(update.effective_user.id):
+            await send_meeting_reminder(update, context)
+        else:
+            await update.message.reply_text("❌ Comando disponível apenas para administradores.")
+    
+    async def setmeeting_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if admin_handler and await admin_handler.is_admin(update.effective_user.id):
+            await set_meeting_link(update, context)
+        else:
+            await update.message.reply_text("❌ Comando disponível apenas para administradores.")
+    
+    application.add_handler(CommandHandler("reuniao", reuniao_wrapper))
+    application.add_handler(CommandHandler("setmeeting", setmeeting_wrapper))
+    
+    # Handlers de admin corrigidos
+    async def broadcast_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if admin_handler:
+            message = ' '.join(context.args) if context.args else ''
+            await admin_handler.handle_broadcast(update, context, message)
+        else:
+            await update.message.reply_text("❌ Sistema administrativo não disponível.")
+    
+    async def users_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if admin_handler:
+            await admin_handler.handle_users_list(update, context)
+        else:
+            await update.message.reply_text("❌ Sistema administrativo não disponível.")
+    
+    async def test_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if admin_handler:
+            await admin_handler.handle_test_message(update, context)
+        else:
+            await update.message.reply_text("❌ Sistema administrativo não disponível.")
+    
+    async def setphoto_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if admin_handler:
+            await admin_handler.handle_setphoto_info(update, context)
+        else:
+            await update.message.reply_text("❌ Sistema administrativo não disponível.")
+    
+    async def adminhelp_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if admin_handler:
+            await admin_handler.handle_admin_help(update, context)
+        else:
+            await update.message.reply_text("❌ Sistema administrativo não disponível.")
+    
+    application.add_handler(CommandHandler("broadcast", broadcast_wrapper))
+    application.add_handler(CommandHandler("users", users_wrapper))
+    application.add_handler(CommandHandler("test", test_wrapper))
+    application.add_handler(CommandHandler("setphoto", setphoto_wrapper))
+    application.add_handler(CommandHandler("adminhelp", adminhelp_wrapper))
     
     # Handler para novos membros
     async def handle_new_members_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):

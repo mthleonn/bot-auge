@@ -24,7 +24,7 @@ Na seção "Environment Variables", adicione:
 TELEGRAM_BOT_TOKEN=7482522123:AAH3h3h3h3h3h3h3h3h3h3h3h3h3h3h3
 GROUP_CHAT_ID=-1002132456789
 DUVIDAS_GROUP_CHAT_ID=-4797522493
-DUVIDAS_GROUP_LINK=https://t.me/+YgugjrIQHt1lNGNh
+DUVIDAS_GROUP_LINK=https://t.me/+5ueqV0IGf7NlODIx
 MENTORIA_LINK=https://www.mentoriaaugetraders.com.br/
 ADMIN_IDS=SEU_ID_AQUI
 DB_PATH=/tmp/bot.db

@@ -136,7 +136,7 @@ Nem todo momento é bom para operar. Aprenda a identificar os melhores horários
 🤝 **Juntos somos mais fortes!**
 
 ❓ **Dúvidas?** Entre no nosso grupo:
-[💬 Grupo de Dúvidas](https://t.me/+YgugjrIQHt1lNGNh)'''
+[💬 Grupo de Dúvidas](https://t.me/+5ueqV0IGf7NlODIx)'''
             }
         ]
         
@@ -152,7 +152,7 @@ Nem todo momento é bom para operar. Aprenda a identificar os melhores horários
 
 👥 **Nossa equipe** está pronta para ajudar!
 
-[💬 Acesse o Grupo de Dúvidas](https://t.me/+YgugjrIQHt1lNGNh)
+[💬 Acesse o Grupo de Dúvidas](https://t.me/+5ueqV0IGf7NlODIx)
 
 🚀 **Não fique com dúvidas - tire agora!**'''
             }

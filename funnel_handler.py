@@ -240,3 +240,10 @@ Qualquer dúvida, estamos aqui para ajudar. Vamos juntos rumo ao sucesso! 🚀""
     def delay(self, ms: int) -> None:
         """Função de delay (compatibilidade com código JavaScript)"""
         return asyncio.sleep(ms / 1000)
+    
+    async def start_background_tasks(self) -> None:
+        """Inicia tarefas em background (compatibilidade com bot.py)"""
+        logger.info("✅ FunnelHandler: Tarefas em background configuradas")
+        # Aqui você pode adicionar tarefas que devem rodar em background
+        # Por exemplo, agendar verificações periódicas do funil
+        pass
