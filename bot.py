@@ -17,6 +17,10 @@ from link_tracker import LinkTracker
 load_dotenv()
 
 # Configuração de logging
+# Criar diretório de logs se não existir
+import os
+os.makedirs('logs', exist_ok=True)
+
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO,
