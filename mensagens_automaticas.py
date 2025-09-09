@@ -8,33 +8,15 @@ class MensagensAutomaticas:
     def __init__(self):
         self.mensagens_matinais = [
             {
-                'texto': '''🌅 **BOM DIA, TRADERS!** 🌅
+                'texto': '''🌅 Bom dia, trader!
 
-⏰ **6h em ponto** - Análise do pré-mercado chegando!
-
-📊 Rafael e Daniel estão preparando:
-• Setups do dia
-• Possíveis entradas
-• Níveis de saída
-• Gestão de risco
-
-👀 **Fiquem atentos** - oportunidades não esperam!
-
-💪 Vamos fazer um dia **consistente**!'''
+Já já Rafael e Daniel vão mandar a análise do pré-mercado.
+Fiquem ligados para se preparar antes do pregão! 🔥'''
             },
             {
-                'texto': '''☀️ **TRADERS, PREPAREM-SE!** ☀️
-
-🎯 Em alguns minutos: **Análise completa do pré-mercado**
-
-📈 **Foco total** nas oportunidades que Rafael e Daniel identificaram!
-
-⚡ **Lembrete importante:**
-• Sigam o plano de trade
-• Respeitem o stop loss
-• Disciplina sempre em primeiro lugar
-
-🚀 **Sucesso é consistência!**'''
+                'texto': '''☀️ Bom dia, trader!
+Prepare seu setup, revise sua estratégia e esteja pronto para aproveitar o dia de mercado com disciplina e foco.
+Bons trades para você!'''
             }
         ]
         
@@ -56,6 +38,44 @@ class MensagensAutomaticas:
         ]
         
         self.mensagens_motivacionais = [
+            {
+                'texto': '''📚 *Dica de Trading:*
+
+Gerenciamento de risco é fundamental! Nunca arrisque mais de 2% do seu capital em uma única operação.
+
+💡 Lembre-se: preservar capital é mais importante que ganhar dinheiro.'''
+            },
+            {
+                'texto': '''🎯 *Estratégia do Dia:*
+
+Antes de entrar em qualquer trade, defina:
+✅ Ponto de entrada
+✅ Stop loss
+✅ Take profit
+
+📈 Planejamento é a chave do sucesso!'''
+            },
+            {
+                'texto': '''🧠 *Psicologia do Trading:*
+
+Controle emocional é 80% do sucesso no trading. Medo e ganância são os maiores inimigos do trader.
+
+🎯 Mantenha-se disciplinado e siga seu plano!'''
+            },
+            {
+                'texto': '''📊 *Análise Técnica:*
+
+Suportes e resistências são níveis-chave no mercado. Observe como o preço reage nesses pontos.
+
+💪 Conhecimento técnico + experiência = resultados consistentes!'''
+            },
+            {
+                'texto': '''⏰ *Gestão de Tempo:*
+
+Nem todo momento é bom para operar. Aprenda a identificar os melhores horários e setups.
+
+🎯 Qualidade > Quantidade sempre!'''
+            },
             {
                 'texto': '''🔥 **MINDSET DE TRADER VENCEDOR** 🔥
 
@@ -209,21 +229,39 @@ class MensagensAutomaticas:
         
         self.mensagens_fim_semana = [
             {
-                'texto': '''🏁 **SEMANA FINALIZADA!** 🏁
+                'texto': '''🗓️ *Reflexão da Semana:*
 
-📊 **Hora do review:**
-• Como foi sua semana de trades?
-• Objetivos alcançados?
-• Lições aprendidas?
+Como foram seus trades esta semana? Anote os acertos e erros para evoluir continuamente.
 
-🔄 **Fim de semana é para:**
-• Descansar a mente
-• Estudar estratégias
-• Planejar próxima semana
+📝 Manter um diário de trading é essencial para o crescimento!'''
+            },
+            {
+                'texto': '''🎯 *Planejamento Semanal:*
 
-💪 **Segunda-feira voltamos** ainda mais fortes!
+Fim de semana é hora de planejar! Revise suas estratégias e prepare-se para a próxima semana.
 
-🎯 **Bom descanso, traders!**'''
+💪 Preparação adequada = melhores resultados!'''
+            },
+            {
+                'texto': '''📈 *Evolução Constante:*
+
+Cada semana é uma oportunidade de aprender algo novo. Estude, pratique e mantenha-se atualizado.
+
+🚀 O mercado recompensa quem se dedica!'''
+            },
+            {
+                'texto': '''🎖️ *Disciplina Semanal:*
+
+Parabéns por mais uma semana de dedicação! Consistência e disciplina são os pilares do sucesso.
+
+💎 Continue firme no seu objetivo!'''
+            },
+            {
+                'texto': '''🔄 *Reset Mental:*
+
+Use o fim de semana para descansar e renovar as energias. Mente descansada = decisões melhores.
+
+⚡ Segunda-feira chegando com tudo!'''
             }
         ]
     
