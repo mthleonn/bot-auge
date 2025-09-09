@@ -73,6 +73,12 @@ Participe do nosso *Grupo de Dúvidas* e compartilhe seu aprendizado.
 Aqui você vai receber informações, insights e estratégias para potencializar seus resultados no Day Trade.
 Nosso objetivo é criar uma comunidade de traders que evoluem juntos através de estudo, análise e disciplina.
 
+💡 Para tirar dúvidas ou interagir com outros membros:
+[🔗 Grupo de Dúvidas](${duvidasLink})
+
+🚀 Quer se aprofundar e aprender com nossa mentoria completa?
+[🎯 Mentoria Auge Traders](${mentoriaLink})
+
 💡 Dica: fique atento às mensagens diárias às 06:00 — preparamos você para o pré-mercado antes da abertura do pregão!`;
         
         const options = {

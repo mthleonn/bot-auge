@@ -35,10 +35,10 @@ class WelcomeHandler:
 Aqui você receberá **análises do pré-mercado** diariamente, enviadas pelo **Rafael** e pelo **Daniel**, com insights sobre **entradas e saídas** para você acompanhar.  
  
 💡 Para tirar dúvidas ou interagir com outros membros, acesse nosso grupo exclusivo:  
-`https://t.me/+5ueqV0IGf7NlODIx`   
+[🔗 Grupo de Dúvidas](https://t.me/+5ueqV0IGf7NlODIx)   
  
 🚀 Quer se aprofundar e aprender com nossa mentoria completa?  
-`https://www.mentoriaaugetraders.com.br/`   
+[🎯 Mentoria Auge Traders](https://www.mentoriaaugetraders.com.br/)   
  
 Fique atento(a), o mercado não espera! 📈''',
                 'buttons': [
