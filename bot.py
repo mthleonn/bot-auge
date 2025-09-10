@@ -7,6 +7,7 @@ import asyncio
 import pytz
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, JobQueue
+from telegram.error import NetworkError, TimedOut, Conflict
 from dotenv import load_dotenv
 
 # Carregar variáveis de ambiente
@@ -721,7 +722,17 @@ Bem-vindo ao nosso grupo! 🎯
             logger.error("Token do bot não encontrado! Verifique o arquivo .env")
             return
         
-        application = Application.builder().token(BOT_TOKEN).build()
+        # Configurar application com timeouts mais robustos e retry
+        application = (
+            Application.builder()
+            .token(BOT_TOKEN)
+            .read_timeout(30)
+            .write_timeout(30)
+            .connect_timeout(30)
+            .pool_timeout(30)
+            .get_updates_read_timeout(30)
+            .build()
+        )
         
         # Handlers de comandos
         application.add_handler(CommandHandler("start", self.start_command))
@@ -758,11 +769,47 @@ Bem-vindo ao nosso grupo! 🎯
         logger.info("🎯 Bot Auge Traders iniciado com sucesso!")
         logger.info(f"Bot configurado para grupos: {GROUP_CHAT_ID}, {DUVIDAS_GROUP_CHAT_ID}")
         
-        # Iniciar o bot
-        try:
-            application.run_polling()
-        except Exception as e:
-            logger.error(f"Erro ao executar o bot: {e}")
+        # Iniciar o bot com retry automático
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                logger.info(f"Iniciando polling... (tentativa {retry_count + 1}/{max_retries})")
+                
+                # Usar configurações mais específicas para evitar conflitos
+                application.run_polling(
+                    drop_pending_updates=True,
+                    allowed_updates=['message', 'chat_member'],
+                    timeout=30,
+                    poll_interval=2.0,
+                    bootstrap_retries=3
+                )
+                break  # Se chegou aqui, o bot está rodando com sucesso
+                
+            except (NetworkError, TimedOut) as e:
+                retry_count += 1
+                logger.warning(f"Erro de rede (tentativa {retry_count}/{max_retries}): {e}")
+                if retry_count < max_retries:
+                    wait_time = retry_count * 5  # Espera progressiva: 5s, 10s, 15s
+                    logger.info(f"Aguardando {wait_time}s antes da próxima tentativa...")
+                    time.sleep(wait_time)
+                else:
+                    logger.error("Máximo de tentativas de reconexão atingido")
+                    
+            except Conflict as e:
+                logger.error(f"Conflito detectado: {e}")
+                logger.error("Há outra instância do bot rodando. Verifique:")
+                logger.error("1. Se há uma instância em produção (Heroku, etc.)")
+                logger.error("2. Se há outro processo local rodando")
+                break
+                
+            except Exception as e:
+                logger.error(f"Erro inesperado: {e}")
+                logger.error(f"Tipo do erro: {type(e).__name__}")
+                import traceback
+                logger.error(f"Traceback completo: {traceback.format_exc()}")
+                break
 
 if __name__ == '__main__':
     bot = AugeTradersBot()
