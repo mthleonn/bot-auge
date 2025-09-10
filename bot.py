@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 
 # Configurações do bot
 BOT_TOKEN = os.getenv('BOT_TOKEN')
-GROUP_CHAT_ID = int(os.getenv('GROUP_CHAT_ID'))
-DUVIDAS_GROUP_CHAT_ID = int(os.getenv('DUVIDAS_GROUP_CHAT_ID'))
+GROUP_CHAT_ID = int(os.getenv('GROUP_CHAT_ID', '').strip().replace('=', ''))
+DUVIDAS_GROUP_CHAT_ID = int(os.getenv('DUVIDAS_GROUP_CHAT_ID', '').strip().replace('=', ''))
 ADMIN_IDS = [int(id.strip()) for id in os.getenv('ADMIN_IDS', '').split(',') if id.strip()]
 DUVIDAS_GROUP_LINK = os.getenv('DUVIDAS_GROUP_LINK')
 MENTORIA_LINK = os.getenv('MENTORIA_LINK')
