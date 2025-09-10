@@ -818,7 +818,28 @@ Bem-vindo ao nosso grupo! 🎯
         def health_check():
             """Health check para Railway"""
             from flask import jsonify
-            return jsonify({'status': 'healthy', 'bot': 'Auge Traders'}), 200
+            try:
+                # Verificar se o bot está inicializado
+                if hasattr(self, 'application') and self.application:
+                    status = 'healthy'
+                    bot_status = 'running'
+                else:
+                    status = 'initializing'
+                    bot_status = 'starting'
+                
+                return jsonify({
+                    'status': status,
+                    'bot': 'Auge Traders',
+                    'bot_status': bot_status,
+                    'timestamp': datetime.now().isoformat()
+                }), 200
+            except Exception as e:
+                logger.error(f"Health check error: {e}")
+                return jsonify({
+                    'status': 'error',
+                    'bot': 'Auge Traders',
+                    'error': str(e)
+                }), 500
         
         @self.flask_app.route('/', methods=['GET'])
         def root():
@@ -829,9 +850,19 @@ Bem-vindo ao nosso grupo! 🎯
     def run_webhook(self, application):
         """Executa o bot usando webhook (Railway)"""
         try:
-            # Inicializar aplicação em thread separada
+            # Armazenar referência da aplicação para health check
+            self.application = application
+            
+            # Inicializar Flask imediatamente
+            logger.info(f"Iniciando servidor Flask na porta {PORT}")
+            
+            # Configurar webhook em thread separada após Flask estar rodando
             def init_telegram_app():
                 try:
+                    # Aguardar Flask inicializar
+                    import time
+                    time.sleep(3)
+                    
                     # Configurar webhook
                     webhook_url = f"{WEBHOOK_URL}/{BOT_TOKEN}"
                     logger.info(f"Configurando webhook: {webhook_url}")
@@ -851,17 +882,12 @@ Bem-vindo ao nosso grupo! 🎯
                     import traceback
                     logger.error(f"Traceback: {traceback.format_exc()}")
             
-            # Inicializar Telegram em thread separada para não bloquear Flask
+            # Inicializar Telegram em thread separada
             import threading
             telegram_thread = threading.Thread(target=init_telegram_app, daemon=True)
             telegram_thread.start()
             
-            # Aguardar um pouco para o webhook ser configurado
-            import time
-            time.sleep(2)
-            
-            # Iniciar Flask (isso deve ser a última coisa, pois bloqueia)
-            logger.info(f"Iniciando servidor Flask na porta {PORT}")
+            # Iniciar Flask (isso bloqueia, mas o health check já estará disponível)
             self.flask_app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)
             
         except Exception as e:
