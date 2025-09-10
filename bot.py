@@ -307,9 +307,14 @@ Olá {name}! 👋
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Comando /start - Mensagem de boas-vindas"""
         user = update.effective_user
-        self.add_user(user.id, user.username, user.first_name, user.last_name)
+        chat = update.effective_chat
         
-        welcome_text = f"""🎯 *Bem-vindo ao Bot Auge Traders!*
+        logger.info(f"[DEBUG] Comando /start executado por {user.first_name} ({user.id}) no chat {chat.id}")
+        
+        try:
+            self.add_user(user.id, user.username, user.first_name, user.last_name)
+            
+            welcome_text = f"""🎯 *Bem-vindo ao Bot Auge Traders!*
 
 Olá {user.first_name}! 👋
 
@@ -327,21 +332,26 @@ Este é o bot oficial da comunidade Auge Traders. Aqui você encontrará:
 👥 **Nossa equipe** está pronta para ajudar!
 
 Vamos juntos rumo ao sucesso! 🚀"""
-        
-        keyboard = [
-            [InlineKeyboardButton("📊 Grupo de Dúvidas", url=DUVIDAS_GROUP_LINK)],
-            [InlineKeyboardButton("🎯 Mentoria Day Trade", url=MENTORIA_LINK)]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        await update.message.reply_text(
-            welcome_text,
-            parse_mode='Markdown',
-            reply_markup=reply_markup,
-            disable_web_page_preview=True
-        )
-        
-        logger.info(f"Comando /start executado por {user.first_name} ({user.id})")
+            
+            keyboard = [
+                [InlineKeyboardButton("📊 Grupo de Dúvidas", url=DUVIDAS_GROUP_LINK)],
+                [InlineKeyboardButton("🎯 Mentoria Day Trade", url=MENTORIA_LINK)]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            logger.info(f"[DEBUG] Enviando mensagem de boas-vindas para {user.first_name}")
+            
+            await update.message.reply_text(
+                welcome_text,
+                parse_mode='Markdown',
+                reply_markup=reply_markup,
+                disable_web_page_preview=True
+            )
+            
+            logger.info(f"[DEBUG] Comando /start executado com sucesso por {user.first_name} ({user.id})")
+        except Exception as e:
+            logger.error(f"[ERROR] Erro no comando /start: {e}")
+            raise
     
     async def send_predefined_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE, message_key: str):
         """Envia uma mensagem predefinida"""
@@ -692,11 +702,18 @@ Bem-vindo ao nosso grupo! 🎯
             user = update.effective_user
             chat = update.effective_chat
             
-            # Adicionar usuário se não existir
-            self.add_user(user.id, user.username, user.first_name, user.last_name)
+            logger.info(f"[DEBUG] Mensagem recebida de {user.first_name} ({user.id}) no chat {chat.id}: {update.message.text[:50]}...")
             
-            # Registrar mensagem
-            self.log_message(user.id, update.message.text, chat.id)
+            try:
+                # Adicionar usuário se não existir
+                self.add_user(user.id, user.username, user.first_name, user.last_name)
+                
+                # Registrar mensagem
+                self.log_message(user.id, update.message.text, chat.id)
+                logger.info(f"[DEBUG] Mensagem processada e logada com sucesso")
+            except Exception as e:
+                logger.error(f"[ERROR] Erro ao processar mensagem: {e}")
+                raise
     
     def run(self):
         """Inicia o bot"""
@@ -731,6 +748,9 @@ Bem-vindo ao nosso grupo! 🎯
         
         # Handler para todas as mensagens (logging)
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
+        
+        logger.info("Handlers configurados com sucesso")
+        logger.info(f"Total de handlers registrados: {len(application.handlers[0])}")
         
         # Configurar agendamento automático de reuniões
         self.setup_meeting_scheduler(application.job_queue)
