@@ -9,6 +9,8 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, JobQueue
 from telegram.error import NetworkError, TimedOut, Conflict
 from dotenv import load_dotenv
+from flask import Flask, request
+import threading
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -27,6 +29,11 @@ DUVIDAS_GROUP_CHAT_ID = int(os.getenv('DUVIDAS_GROUP_CHAT_ID', '').strip().repla
 ADMIN_IDS = [int(id.strip()) for id in os.getenv('ADMIN_IDS', '').split(',') if id.strip()]
 DUVIDAS_GROUP_LINK = os.getenv('DUVIDAS_GROUP_LINK')
 MENTORIA_LINK = os.getenv('MENTORIA_LINK')
+
+# Configurações do Railway
+PORT = int(os.getenv('PORT', 8000))
+WEBHOOK_URL = os.getenv('WEBHOOK_URL', '')
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')  # 'production' para Railway
 
 class AugeTradersBot:
     def __init__(self):
@@ -734,6 +741,10 @@ Bem-vindo ao nosso grupo! 🎯
             .build()
         )
         
+        # Configurar Flask para webhook (Railway)
+        if ENVIRONMENT == 'production':
+            self.setup_flask_webhook(application)
+        
         # Handlers de comandos
         application.add_handler(CommandHandler("start", self.start_command))
         application.add_handler(CommandHandler("stats", self.admin_stats))
@@ -769,7 +780,74 @@ Bem-vindo ao nosso grupo! 🎯
         logger.info("🎯 Bot Auge Traders iniciado com sucesso!")
         logger.info(f"Bot configurado para grupos: {GROUP_CHAT_ID}, {DUVIDAS_GROUP_CHAT_ID}")
         
-        # Iniciar o bot com retry automático
+        # Escolher método de execução baseado no ambiente
+        if ENVIRONMENT == 'production':
+            logger.info("🚀 Iniciando bot em modo WEBHOOK (Railway)")
+            self.run_webhook(application)
+        else:
+            logger.info("🔄 Iniciando bot em modo POLLING (desenvolvimento)")
+            self.run_polling(application)
+    
+    def setup_flask_webhook(self, application):
+        """Configura Flask para receber webhooks do Telegram"""
+        self.flask_app = Flask(__name__)
+        self.application = application
+        
+        @self.flask_app.route(f'/{BOT_TOKEN}', methods=['POST'])
+        def webhook():
+            """Processa updates do webhook"""
+            try:
+                update_data = request.get_json(force=True)
+                update = Update.de_json(update_data, self.application.bot)
+                
+                # Processar update de forma síncrona
+                import asyncio
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(self.application.process_update(update))
+                loop.close()
+                
+                return 'OK'
+            except Exception as e:
+                logger.error(f"Erro ao processar webhook: {e}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                return 'ERROR', 500
+        
+        @self.flask_app.route('/health', methods=['GET'])
+        def health_check():
+            """Health check para Railway"""
+            return {'status': 'healthy', 'bot': 'Auge Traders'}
+    
+    def run_webhook(self, application):
+        """Executa o bot usando webhook (Railway)"""
+        try:
+            # Configurar webhook
+            webhook_url = f"{WEBHOOK_URL}/{BOT_TOKEN}"
+            logger.info(f"Configurando webhook: {webhook_url}")
+            
+            # Inicializar aplicação em thread separada
+            async def init_app():
+                await application.initialize()
+                await application.start()
+                await application.bot.set_webhook(url=webhook_url)
+                logger.info("Webhook configurado com sucesso!")
+            
+            # Executar inicialização
+            import asyncio
+            asyncio.run(init_app())
+            
+            # Iniciar Flask
+            logger.info(f"Iniciando servidor Flask na porta {PORT}")
+            self.flask_app.run(host='0.0.0.0', port=PORT, debug=False)
+            
+        except Exception as e:
+            logger.error(f"Erro ao iniciar webhook: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+    
+    def run_polling(self, application):
+        """Executa o bot usando polling (desenvolvimento)"""
         max_retries = 3
         retry_count = 0
         
@@ -800,7 +878,7 @@ Bem-vindo ao nosso grupo! 🎯
             except Conflict as e:
                 logger.error(f"Conflito detectado: {e}")
                 logger.error("Há outra instância do bot rodando. Verifique:")
-                logger.error("1. Se há uma instância em produção (Heroku, etc.)")
+                logger.error("1. Se há uma instância em produção (Railway, etc.)")
                 logger.error("2. Se há outro processo local rodando")
                 break
                 
