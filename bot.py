@@ -1,536 +1,749 @@
-import logging
 import os
+import logging
+import sqlite3
+from datetime import datetime, time as dt_time
+import time
 import asyncio
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+import pytz
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, JobQueue
 from dotenv import load_dotenv
 
-# Importa os handlers personalizados
-from database import Database
-from admin_handler import AdminHandler
-from funnel_handler import FunnelHandler
-from message_handler import MessageHandler as CustomMessageHandler
-from welcome_handler import WelcomeHandler
-from link_tracker import LinkTracker
-
-# Carrega variáveis de ambiente
+# Carregar variáveis de ambiente
 load_dotenv()
 
-# Configuração de logging
-# Criar diretório de logs se não existir
-import os
-os.makedirs('logs', exist_ok=True)
-
+# Configurar logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO,
-    handlers=[
-        logging.FileHandler('logs/bot.log'),
-        logging.StreamHandler()
-    ]
+    level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# Inicializa componentes globais
-database = None
-admin_handler = None
-funnel_handler = None
-message_handler = None
-welcome_handler = None
-link_tracker = None
+# Configurações do bot
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+GROUP_CHAT_ID = int(os.getenv('GROUP_CHAT_ID'))
+DUVIDAS_GROUP_CHAT_ID = int(os.getenv('DUVIDAS_GROUP_CHAT_ID'))
+ADMIN_IDS = [int(id.strip()) for id in os.getenv('ADMIN_IDS', '').split(',') if id.strip()]
+DUVIDAS_GROUP_LINK = os.getenv('DUVIDAS_GROUP_LINK')
+MENTORIA_LINK = os.getenv('MENTORIA_LINK')
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Comando /start"""
-    user = update.effective_user
-    chat = update.effective_chat
+class AugeTradersBot:
+    def __init__(self):
+        self.db_path = './data/bot.db'
+        self.init_database()
+        self.timezone = pytz.timezone('America/Sao_Paulo')
+        self.messages = self.load_predefined_messages()
     
-    # Adiciona usuário ao banco de dados se não existir
-    if database:
-        user_data = {
-            'user_id': user.id,
-            'first_name': user.first_name or '',
-            'last_name': user.last_name or '',
-            'username': user.username or '',
-            'chat_id': chat.id,
-            'join_date': None  # Será definido quando entrar no grupo
+    def init_database(self):
+        """Inicializa o banco de dados SQLite"""
+        os.makedirs('./data', exist_ok=True)
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Tabela de usuários
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INTEGER PRIMARY KEY,
+                username TEXT,
+                first_name TEXT,
+                last_name TEXT,
+                join_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_active BOOLEAN DEFAULT 1
+            )
+        ''')
+        
+        # Tabela de mensagens
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                message_text TEXT,
+                message_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                group_id INTEGER
+            )
+        ''')
+        
+        # Tabela de reuniões
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS meetings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                meeting_link TEXT,
+                meeting_date TEXT,
+                meeting_time TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_active INTEGER DEFAULT 1
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+        logger.info("Banco de dados inicializado com sucesso")
+    
+    def load_predefined_messages(self):
+        """Carrega mensagens prontas do sistema"""
+        return {
+            'welcome_main': """🎯 **Bem-vindo(a) ao Auge Traders!** 🎯
+
+Olá {name}! 👋
+
+📊 Aqui você receberá **análises diárias do pré-mercado** pelos nossos mentores **Rafael** e **Daniel**, com:
+• Possíveis **entradas** e **saídas**
+• Estratégias testadas e aprovadas
+• Acompanhamento em tempo real
+
+⏰ **Análises enviadas às 6h** todos os dias úteis!
+
+🚀 Acelere seus resultados:
+[🎯 Mentoria Completa]({mentoria_link})
+[❓ Grupo de Dúvidas]({duvidas_link})
+
+💪 Vamos conquistar a consistência juntos!""",
+            
+            'morning_alert': """🌅 **BOM DIA, TRADERS!** 🌅
+
+⏰ **6h em ponto** - Análise do pré-mercado chegando!
+
+📊 Rafael e Daniel estão preparando:
+• Setups do dia
+• Possíveis entradas
+• Níveis de saída
+• Gestão de risco
+
+👀 **Fiquem atentos** - oportunidades não esperam!
+
+💪 Vamos fazer um dia **consistente**!""",
+            
+            'market_alert': """🚨 **ALERTA DE MERCADO** 🚨
+
+📊 **Movimento importante** detectado!
+
+⚡ **Atenção traders:**
+• Acompanhem os níveis indicados
+• Aguardem confirmação
+• Mantenham a disciplina
+
+🎯 **Oportunidade pode estar se formando!**
+
+💪 Foco e execução!""",
+            
+            'motivational': """🔥 **MINDSET DE TRADER VENCEDOR** 🔥
+
+💭 **Lembre-se:**
+"O mercado recompensa a **disciplina**, não a pressa."
+
+✅ **Trader consistente:**
+• Segue o plano
+• Controla as emoções
+• Estuda constantemente
+• Respeita o risco
+
+📚 **Continue estudando** - conhecimento é poder!
+
+🎯 [Acelere seu aprendizado na Mentoria]({mentoria_link})""",
+            
+            'engagement': """💪 **TRADERS, COMO ESTÁ O DIA?** 💪
+
+📊 **Compartilhem:**
+• Como estão seguindo o plano?
+• Alguma dúvida sobre os setups?
+• Resultados do dia?
+
+🤝 **Juntos somos mais fortes!**
+
+❓ **Dúvidas?** Entre no nosso grupo:
+[💬 Grupo de Dúvidas]({duvidas_link})""",
+            
+            'doubts_reminder': """❓ **TEM DÚVIDAS? NÓS TEMOS RESPOSTAS!** ❓
+
+🎯 **Grupo exclusivo** para esclarecer:
+• Análises técnicas
+• Estratégias de entrada
+• Gestão de risco
+• Psicologia do trader
+
+👥 **Nossa equipe** está pronta para ajudar!
+
+[💬 Acesse o Grupo de Dúvidas]({duvidas_link})
+
+🚀 **Não fique com dúvidas - tire agora!**""",
+            
+            'mentoria_promo': """🎓 **QUER ACELERAR SEUS RESULTADOS?** 🎓
+
+🚀 **Mentoria Auge Traders:**
+• Aulas ao vivo com Rafael e Daniel
+• Estratégias exclusivas
+• Acompanhamento personalizado
+• Comunidade de traders vencedores
+
+💡 **Transforme** sua operação de vez!
+
+[🎯 Conheça a Mentoria Completa]({mentoria_link})
+
+⏰ **Vagas limitadas** - não perca!""",
+            
+            'discipline': """⚖️ **DISCIPLINA = CONSISTÊNCIA** ⚖️
+
+🎯 **Trader disciplinado:**
+• Não força trades
+• Espera o setup perfeito
+• Corta loss rapidamente
+• Deixa o lucro correr
+
+📈 **Resultado:** Conta crescendo mês após mês!
+
+💪 **Seja paciente** - o mercado sempre oferece novas oportunidades!
+
+🔥 **Foco no processo, não no resultado!**""",
+            
+            'weekend': """🏁 **SEMANA FINALIZADA!** 🏁
+
+📊 **Hora do review:**
+• Como foi sua semana de trades?
+• Objetivos alcançados?
+• Lições aprendidas?
+
+🔄 **Fim de semana é para:**
+• Descansar a mente
+• Estudar estratégias
+• Planejar próxima semana
+
+💪 **Segunda-feira voltamos** ainda mais fortes!
+
+🎯 **Bom descanso, traders!**""",
+            
+            'motivation': """🌟 **VOCÊ ESTÁ NO CAMINHO CERTO!** 🌟
+
+🎯 **Lembre-se:**
+• Todo trader passou por dificuldades
+• Consistência vem com tempo e prática
+• Cada erro é uma lição valiosa
+• Persistência é a chave do sucesso
+
+📈 **Continue firme** na sua jornada!
+
+🚀 **O sucesso** está mais próximo do que imagina!
+
+💪 **Auge Traders** - juntos somos imparáveis!"""
         }
-        database.add_user(user_data)
     
-    await update.message.reply_html(
-        f"Olá {user.mention_html()}!\n\n"
-        f"🎯 **Bot Auge Traders ativo!**\n\n"
-        f"📈 Funcionalidades disponíveis:\n"
-        f"• Sistema de boas-vindas personalizado\n"
-        f"• Moderação avançada do grupo\n"
-        f"• Funil automático de mensagens\n"
-        f"• Estatísticas detalhadas\n"
-        f"• Rastreamento de links\n\n"
-        f"Use /help para ver todos os comandos disponíveis."
-    )
-
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Comando /help"""
-    user = update.effective_user
-    is_admin = admin_handler and await admin_handler.is_admin(user.id)
+    def add_user(self, user_id, username=None, first_name=None, last_name=None):
+        """Adiciona ou atualiza usuário no banco"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT OR REPLACE INTO users (user_id, username, first_name, last_name)
+            VALUES (?, ?, ?, ?)
+        ''', (user_id, username, first_name, last_name))
+        
+        conn.commit()
+        conn.close()
     
-    help_text = """
-🤖 **Comandos do Bot Auge**
-
-**Comandos Gerais:**
-/start - Inicia o bot
-/help - Mostra esta mensagem
-/status - Status do bot
-/stats - Estatísticas do grupo
-/links - Estatísticas de links
-/testwelcome - Testa mensagem de boas-vindas
-    """
+    def log_message(self, user_id, message_text, group_id):
+        """Registra mensagem no banco"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO messages (user_id, message_text, group_id)
+            VALUES (?, ?, ?)
+        ''', (user_id, message_text, group_id))
+        
+        conn.commit()
+        conn.close()
     
-    if is_admin:
-        help_text += """
-
-**Comandos de Admin:**
-/broadcast <mensagem> - Envia mensagem para todos
-/users - Lista usuários do grupo
-/test - Testa funcionalidades
-/setphoto - Define foto do bot
-/adminhelp - Ajuda completa de admin
-/testmsg - Mostra todas as mensagens automáticas
-/reuniao - Envia lembrete da reunião semanal
-/setmeeting <link> - Define novo link da reunião
-        """
-    
-    help_text += """
-
-**Informações:**
-• Bot desenvolvido para o grupo Auge
-• Versão: 2.1 - Atualizado
-• Suporte: @AugeSuporte
-• Reunião semanal: Segundas às 19h
-    """
-    
-    await update.message.reply_text(help_text, parse_mode='Markdown')
-
-async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Comando /status"""
-    try:
-        # Verifica status dos componentes
-        db_status = "✅ Conectado" if database else "❌ Desconectado"
-        admin_status = "✅ Ativo" if admin_handler else "❌ Inativo"
-        funnel_status = "✅ Ativo" if funnel_handler else "❌ Inativo"
-        welcome_status = "✅ Ativo" if welcome_handler else "❌ Inativo"
-        tracker_status = "✅ Ativo" if link_tracker else "❌ Inativo"
-        
-        # Estatísticas básicas
-        total_users = len(database.get_all_users()) if database else 0
-        
-        status_text = f"""
-✅ **Bot Auge - Status Completo**
-
-🔧 **Componentes:**
-• Banco de dados: {db_status}
-• Admin Handler: {admin_status}
-• Funil Handler: {funnel_status}
-• Welcome Handler: {welcome_status}
-• Link Tracker: {tracker_status}
-
-📊 **Estatísticas:**
-• Total de usuários: {total_users}
-• Status geral: Online
-• Versão: 2.0
-
-🕐 **Última atualização:** Agora
-        """
-        
-        await update.message.reply_text(status_text, parse_mode='Markdown')
-        
-    except Exception as e:
-        logger.error(f"Erro no comando status: {e}")
-        await update.message.reply_text("❌ Erro ao obter status do bot.")
-
-async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Comando /stats - Estatísticas do grupo"""
-    try:
-        if not database:
-            await update.message.reply_text("❌ Banco de dados não disponível.")
-            return
-        
-        chat_id = update.effective_chat.id
-        stats = await welcome_handler.get_welcome_stats(chat_id) if welcome_handler else "Estatísticas não disponíveis"
-        
-        await update.message.reply_text(stats, parse_mode='Markdown')
-        
-    except Exception as e:
-        logger.error(f"Erro no comando stats: {e}")
-        await update.message.reply_text("❌ Erro ao obter estatísticas.")
-
-async def links_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Comando /links - Estatísticas de links"""
-    try:
-        if not link_tracker:
-            await update.message.reply_text("❌ Rastreador de links não disponível.")
-            return
-        
-        chat_id = update.effective_chat.id
-        stats = await link_tracker.get_link_statistics(chat_id, 7)
-        
-        await update.message.reply_text(stats, parse_mode='Markdown')
-        
-    except Exception as e:
-        logger.error(f"Erro no comando links: {e}")
-        await update.message.reply_text("❌ Erro ao obter estatísticas de links.")
-
-async def test_welcome_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Comando /testwelcome - Testa mensagem de boas-vindas"""
-    try:
-        user = update.effective_user
-        chat = update.effective_chat
-        
-        logger.info(f"🧪 Teste de boas-vindas solicitado por {user.first_name} no chat {chat.id}")
-        
-        if welcome_handler:
-            # Simula um novo membro (o próprio usuário)
-            fake_member = type('Member', (), {
-                'id': user.id,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-                'username': user.username
-            })()
-            
-            await welcome_handler._send_welcome_message(update, context, fake_member, chat)
-            logger.info(f"✅ Mensagem de teste enviada para {user.first_name}")
-        else:
-            await update.message.reply_text("❌ WelcomeHandler não está inicializado!")
-            logger.error("❌ WelcomeHandler não inicializado para teste")
-            
-    except Exception as e:
-        logger.error(f"Erro no comando /testwelcome: {e}")
-        await update.message.reply_text(f"❌ Erro ao testar boas-vindas: {e}")
-
-async def process_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Processa todas as mensagens através do MessageHandler"""
-    try:
-        if message_handler:
-            await message_handler.process_message(update, context)
-        
-        # Processa links se disponível
-        if link_tracker:
-            await link_tracker.process_message_links(update, context)
-            
-    except Exception as e:
-        logger.error(f"Erro ao processar mensagem: {e}")
-
-async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    """Lida com erros"""
-    logger.error(f"Erro causado por update {update}: {context.error}")
-    
-    # Notifica admins se configurado
-    if admin_handler and os.getenv('NOTIFY_ADMIN_ON_ERROR', 'true').lower() == 'true':
+    def save_meeting_config(self, link, date, time):
+        """Salva configuração de reunião no banco de dados"""
         try:
-            await admin_handler.notify_admins(f"❌ Erro no bot: {context.error}")
-        except:
-            pass
-
-async def show_all_automated_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Mostra todas as mensagens automáticas do sistema"""
-    try:
-        messages_info = """
-🧪 **Todas as Mensagens Automáticas do Bot**
-
-📅 **Mensagens Diárias:**
-• Mensagem diária às 06:00 (timezone: America/Sao_Paulo)
-• Conteúdo: Análises e informações do dia
-
-📈 **Funil de Mensagens:**
-• 24h após entrada: Mensagem de engajamento
-• 48h após entrada: Convite para mentoria
-• 72h após entrada: Lembrete de participação
-
-👋 **Mensagens de Boas-vindas:**
-• Automática para novos membros
-• Personalizada por tipo de grupo
-
-📞 **Reunião Semanal:**
-• Toda segunda-feira às 19:00
-• Lembrete enviado às 18:00
-• Link da reunião incluído
-
-🔧 **Para testar individualmente:**
-• `/testwelcome` - Testa boas-vindas
-• `/test` - Teste geral do sistema
-• `/admin test` - Teste administrativo
-        """
-        
-        await update.message.reply_text(messages_info, parse_mode='Markdown')
-        
-        # Enviar exemplo de cada tipo de mensagem
-        if funnel_handler:
-            await update.message.reply_text("\n📨 **Exemplo - Mensagem 24h:**")
-            try:
-                await funnel_handler.send_24h_message(update.effective_chat.id, update.effective_user.first_name)
-            except:
-                await update.message.reply_text("Exemplo de mensagem 24h não disponível")
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
             
-            await asyncio.sleep(1)
-            await update.message.reply_text("\n📨 **Exemplo - Mensagem 48h:**")
-            try:
-                await funnel_handler.send_48h_message(update.effective_chat.id, update.effective_user.first_name)
-            except:
-                await update.message.reply_text("Exemplo de mensagem 48h não disponível")
+            # Desativar reuniões anteriores
+            cursor.execute('UPDATE meetings SET is_active = 0')
             
-            await asyncio.sleep(1)
-            await update.message.reply_text("\n📨 **Exemplo - Mensagem 72h:**")
-            try:
-                await funnel_handler.send_72h_message(update.effective_chat.id, update.effective_user.first_name)
-            except:
-                await update.message.reply_text("Exemplo de mensagem 72h não disponível")
+            # Inserir nova configuração
+            cursor.execute('''
+                INSERT INTO meetings (meeting_link, meeting_date, meeting_time)
+                VALUES (?, ?, ?)
+            ''', (link, date, time))
+            
+            conn.commit()
+            conn.close()
+            return True
+            
+        except Exception as e:
+            logger.error(f"Erro ao salvar configuração de reunião: {e}")
+            return False
+    
+    def get_active_meeting(self):
+        """Recupera a configuração ativa de reunião"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT meeting_link, meeting_date, meeting_time 
+                FROM meetings 
+                WHERE is_active = 1 
+                ORDER BY created_at DESC 
+                LIMIT 1
+            ''')
+            
+            result = cursor.fetchone()
+            conn.close()
+            
+            if result:
+                return {
+                    'link': result[0],
+                    'date': result[1],
+                    'time': result[2]
+                }
+            return None
+            
+        except Exception as e:
+            logger.error(f"Erro ao recuperar configuração de reunião: {e}")
+            return None
+    
+    async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /start - Mensagem de boas-vindas"""
+        user = update.effective_user
+        self.add_user(user.id, user.username, user.first_name, user.last_name)
         
-    except Exception as e:
-        logger.error(f"Erro ao mostrar mensagens automáticas: {e}")
-        await update.message.reply_text("❌ Erro ao carregar mensagens automáticas.")
+        welcome_text = f"""🎯 *Bem-vindo ao Bot Auge Traders!*
 
-async def send_meeting_reminder(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Envia lembrete da reunião semanal"""
-    try:
-        # Obter link da reunião do banco de dados
-        meeting_link = database.get_meeting_link() if database else "https://meet.google.com/auge-traders-weekly"
+Olá {user.first_name}! 👋
+
+Este é o bot oficial da comunidade Auge Traders. Aqui você encontrará:
+
+📊 Análises de mercado em tempo real
+💡 Dicas e estratégias de trading
+🎓 Conteúdo educacional exclusivo
+📈 Sinais e oportunidades
+
+🔗 *Links importantes:*
+[🔗 Grupo de Dúvidas]({DUVIDAS_GROUP_LINK})
+[🎯 Mentoria Auge Traders]({MENTORIA_LINK})
+
+👥 **Nossa equipe** está pronta para ajudar!
+
+Vamos juntos rumo ao sucesso! 🚀"""
         
-        meeting_message = f"""
-📞 **REUNIÃO SEMANAL AUGE TRADERS** 📞
-
-🗓️ **Toda Segunda-feira às 19:00**
-⏰ **Horário:** 19:00 (Brasília)
-🔗 **Link:** {meeting_link}
-
-💡 **Pauta desta semana:**
-• Review da semana anterior
-• Estratégias para próxima semana
-• Tire suas dúvidas ao vivo
-• Networking com outros traders
-
-👥 **Presença confirmada?** Nos vemos lá!
-        """
+        keyboard = [
+            [InlineKeyboardButton("📊 Grupo de Dúvidas", url=DUVIDAS_GROUP_LINK)],
+            [InlineKeyboardButton("🎯 Mentoria Day Trade", url=MENTORIA_LINK)]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
         
-        await update.message.reply_text(meeting_message, parse_mode='Markdown')
+        await update.message.reply_text(
+            welcome_text,
+            parse_mode='Markdown',
+            reply_markup=reply_markup,
+            disable_web_page_preview=True
+        )
         
-    except Exception as e:
-        logger.error(f"Erro ao enviar lembrete da reunião: {e}")
-        await update.message.reply_text("❌ Erro ao enviar lembrete da reunião.")
-
-async def set_meeting_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Define novo link da reunião"""
-    try:
-        if not context.args:
-            current_link = database.get_meeting_link() if database else os.getenv('MEETING_LINK', 'Não definido')
-            help_message = f"""
-🔗 **Configurar Link da Reunião**
-
-**Link atual:** {current_link}
-
-**Como usar:**
-`/setmeeting https://meet.google.com/seu-novo-link`
-
-**Exemplo:**
-`/setmeeting https://meet.google.com/abc-defg-hij`
-            """
-            await update.message.reply_text(help_message, parse_mode='Markdown')
+        logger.info(f"Comando /start executado por {user.first_name} ({user.id})")
+    
+    async def send_predefined_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE, message_key: str):
+        """Envia uma mensagem predefinida"""
+        if update.effective_user.id not in ADMIN_IDS:
+            await update.message.reply_text("❌ Você não tem permissão para usar este comando.")
             return
         
-        new_link = context.args[0]
-        
-        # Validar se é um link válido
-        if not (new_link.startswith('http://') or new_link.startswith('https://')):
-            await update.message.reply_text("❌ Por favor, forneça um link válido (deve começar com http:// ou https://)")
+        if message_key not in self.messages:
+            await update.message.reply_text(f"❌ Mensagem '{message_key}' não encontrada.")
             return
         
-        # Salvar no banco de dados
-        if database:
-            database.set_meeting_link(new_link)
-            success_message = f"""
-✅ **Link da reunião atualizado!**
+        message_text = self.messages[message_key].format(
+            mentoria_link=MENTORIA_LINK,
+            duvidas_link=DUVIDAS_GROUP_LINK
+        )
+        
+        # Enviar para o grupo principal
+        try:
+            await context.bot.send_message(
+                chat_id=GROUP_CHAT_ID,
+                text=message_text,
+                parse_mode='Markdown',
+                disable_web_page_preview=True
+            )
+            await update.message.reply_text(f"✅ Mensagem '{message_key}' enviada com sucesso!")
+            logger.info(f"Mensagem '{message_key}' enviada por admin {update.effective_user.id}")
+        except Exception as e:
+            await update.message.reply_text(f"❌ Erro ao enviar mensagem: {str(e)}")
+            logger.error(f"Erro ao enviar mensagem '{message_key}': {e}")
+    
+    # Comandos específicos para cada mensagem
+    async def cmd_morning_alert(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /morning - Envia alerta matinal"""
+        await self.send_predefined_message(update, context, 'morning_alert')
+    
+    async def cmd_market_alert(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /alert - Envia alerta de mercado"""
+        await self.send_predefined_message(update, context, 'market_alert')
+    
+    async def cmd_motivational(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /motivacao - Envia mensagem motivacional"""
+        await self.send_predefined_message(update, context, 'motivational')
+    
+    async def cmd_engagement(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /engajamento - Envia mensagem de engajamento"""
+        await self.send_predefined_message(update, context, 'engagement')
+    
+    async def cmd_doubts_reminder(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /duvidas - Lembra sobre grupo de dúvidas"""
+        await self.send_predefined_message(update, context, 'doubts_reminder')
+    
+    async def cmd_mentoria_promo(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /mentoria - Promove a mentoria"""
+        await self.send_predefined_message(update, context, 'mentoria_promo')
+    
+    async def cmd_discipline(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /disciplina - Mensagem sobre disciplina"""
+        await self.send_predefined_message(update, context, 'discipline')
+    
+    async def cmd_weekend(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /weekend - Mensagem de fim de semana"""
+        await self.send_predefined_message(update, context, 'weekend')
+    
+    async def cmd_motivation(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /motivacao_geral - Mensagem motivacional geral"""
+        await self.send_predefined_message(update, context, 'motivation')
+    
+    async def cmd_list_messages(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /mensagens - Lista todas as mensagens disponíveis"""
+        if update.effective_user.id not in ADMIN_IDS:
+            await update.message.reply_text("❌ Você não tem permissão para usar este comando.")
+            return
+        
+        commands_list = """
+📋 **Comandos de Mensagens Disponíveis:**
 
-🔗 **Novo link:** {new_link}
+🌅 `/morning` - Alerta matinal (6h)
+🚨 `/alert` - Alerta de mercado
+🔥 `/motivacao` - Mindset de trader
+💪 `/engajamento` - Interação com grupo
+❓ `/duvidas` - Lembrete grupo dúvidas
+🎓 `/mentoria` - Promoção mentoria
+⚖️ `/disciplina` - Mensagem disciplina
+🏁 `/weekend` - Fim de semana
+🌟 `/motivacao_geral` - Motivação geral
 
-📝 **Alteração salva no banco de dados.**
-            """
-        else:
-            success_message = f"""
-⚠️ **Link temporariamente atualizado!**
+🏢 **Comandos de Reunião:**
+📝 `/set_meeting` - Configurar reunião (link, data, hora)
+🧪 `/test_meeting` - Testar mensagem de reunião
 
-🔗 **Novo link:** {new_link}
+📋 `/mensagens` - Esta lista
+📊 `/stats` - Estatísticas do bot
 
-📝 **Nota:** Banco de dados não disponível. Para que a alteração seja permanente, você precisa atualizar a variável de ambiente `MEETING_LINK` no seu servidor.
-            """
+💡 **Uso:** Digite o comando para enviar a mensagem correspondente ao grupo principal.
+        """
         
-        await update.message.reply_text(success_message, parse_mode='Markdown')
+        await update.message.reply_text(commands_list, parse_mode='Markdown')
+        logger.info(f"Lista de comandos solicitada por admin {update.effective_user.id}")
+    
+    def get_meeting_message(self):
+        """Gera mensagem de reunião com dados atuais"""
+        meeting = self.get_active_meeting()
+        if not meeting:
+            return None
         
-        # Log da alteração
-        logger.info(f"Link da reunião alterado por {update.effective_user.first_name}: {new_link}")
-        
-    except Exception as e:
-        logger.error(f"Erro ao definir link da reunião: {e}")
-        await update.message.reply_text("❌ Erro ao definir link da reunião.")
+        message = f"""🚨 *Lembrete Importante!*
 
+Nossa reunião da Auge acontece em *{meeting['date']}* às *{meeting['time']}*.
 
+É o momento perfeito para estudarmos juntos, tirar dúvidas e ter contato direto com os mentores.
 
-async def initialize_components():
-    """Inicializa todos os componentes do bot"""
-    global database, admin_handler, funnel_handler, message_handler, welcome_handler, link_tracker
+🔗 [Clique aqui para participar]({meeting['link']})"""
+        
+        return message
     
-    try:
-        # Inicializa banco de dados
-        database = Database()
-        logger.info("✅ Banco de dados inicializado")
+    async def cmd_set_meeting(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /set_meeting - Configurar reunião"""
+        if update.effective_user.id not in ADMIN_IDS:
+            await update.message.reply_text("❌ Você não tem permissão para usar este comando.")
+            return
         
-        # Inicializa handlers
-        admin_handler = AdminHandler(None, database)  # bot será definido depois
-        logger.info("✅ AdminHandler inicializado")
+        # Verificar se foram fornecidos os parâmetros necessários
+        if len(context.args) < 3:
+            await update.message.reply_text(
+                "📝 *Uso correto:*\n\n"
+                "`/set_meeting [LINK] [DATA] [HORA]`\n\n"
+                "*Exemplo:*\n"
+                "`/set_meeting https://meet.google.com/abc-def-ghi 15/01/2024 20:00`",
+                parse_mode='Markdown'
+            )
+            return
         
-        funnel_handler = FunnelHandler(None, database)  # bot será definido depois
-        logger.info("✅ FunnelHandler inicializado")
+        link = context.args[0]
+        date = context.args[1]
+        time = context.args[2]
         
-        welcome_handler = WelcomeHandler(database, funnel_handler)
-        logger.info("✅ WelcomeHandler inicializado")
+        # Salvar configuração
+        if self.save_meeting_config(link, date, time):
+            await update.message.reply_text(
+                f"✅ *Reunião configurada com sucesso!*\n\n"
+                f"📅 **Data:** {date}\n"
+                f"🕐 **Horário:** {time}\n"
+                f"🔗 **Link:** {link}\n\n"
+                f"A mensagem será enviada automaticamente para novos membros e nos horários programados.",
+                parse_mode='Markdown'
+            )
+        else:
+            await update.message.reply_text("❌ Erro ao configurar reunião. Tente novamente.")
+    
+    async def cmd_test_meeting(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /test_meeting - Testar mensagem de reunião"""
+        if update.effective_user.id not in ADMIN_IDS:
+            await update.message.reply_text("❌ Você não tem permissão para usar este comando.")
+            return
         
-        link_tracker = LinkTracker(database)
-        logger.info("✅ LinkTracker inicializado")
+        message = self.get_meeting_message()
+        if message:
+            await update.message.reply_text(message, parse_mode='Markdown')
+        else:
+            await update.message.reply_text(
+                 "❌ Nenhuma reunião configurada.\n\n"
+                 "Use `/set_meeting` para configurar uma reunião primeiro.",
+                 parse_mode='Markdown'
+             )
+    
+    async def send_scheduled_meeting_message(self, context: ContextTypes.DEFAULT_TYPE):
+        """Envia mensagem de reunião automaticamente nos horários programados"""
+        meeting_message = self.get_meeting_message()
+        if meeting_message:
+            try:
+                await context.bot.send_message(
+                    chat_id=GROUP_CHAT_ID,
+                    text=meeting_message,
+                    parse_mode='Markdown',
+                    disable_web_page_preview=True
+                )
+                logger.info("Mensagem de reunião enviada automaticamente")
+            except Exception as e:
+                logger.error(f"Erro ao enviar mensagem automática de reunião: {e}")
+    
+    def setup_meeting_scheduler(self, job_queue: JobQueue):
+        """Configura o agendamento automático de mensagens de reunião"""
+        # Horários para envio automático (10:00 e 18:00 horário de Brasília)
+        morning_time = dt_time(hour=10, minute=0, second=0)
+        evening_time = dt_time(hour=18, minute=0, second=0)
         
-        message_handler = CustomMessageHandler(None, database, admin_handler)
-        logger.info("✅ MessageHandler inicializado")
+        # Agendar envios diários
+        job_queue.run_daily(
+            self.send_scheduled_meeting_message,
+            time=morning_time,
+            name='meeting_morning'
+        )
         
-        # Inicia tarefas em background
-        await funnel_handler.start_background_tasks()
-        logger.info("✅ Tarefas em background iniciadas")
+        job_queue.run_daily(
+            self.send_scheduled_meeting_message,
+            time=evening_time,
+            name='meeting_evening'
+        )
         
-        return True
-        
-    except Exception as e:
-        logger.error(f"❌ Erro ao inicializar componentes: {e}")
-        return False
+        logger.info("Agendamento automático de reuniões configurado para 10:00 e 18:00")
+    
+    async def welcome_new_member(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Mensagem automática para novos membros"""
+        for new_member in update.message.new_chat_members:
+            self.add_user(new_member.id, new_member.username, new_member.first_name, new_member.last_name)
+            
+            if update.effective_chat.id == GROUP_CHAT_ID:
+                # Mensagem para grupo principal usando mensagem predefinida
+                welcome_text = self.messages['welcome_main'].format(
+                    name=new_member.first_name,
+                    mentoria_link=MENTORIA_LINK,
+                    duvidas_link=DUVIDAS_GROUP_LINK
+                )
+                
+                keyboard = [
+                    [InlineKeyboardButton("🎯 Mentoria Day Trade", url=MENTORIA_LINK)]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await update.message.reply_text(
+                    welcome_text,
+                    parse_mode='Markdown',
+                    reply_markup=reply_markup,
+                    disable_web_page_preview=True
+                )
+                
+                # Enviar mensagem de reunião se configurada
+                meeting_message = self.get_meeting_message()
+                if meeting_message:
+                    await update.message.reply_text(
+                        meeting_message,
+                        parse_mode='Markdown',
+                        disable_web_page_preview=True
+                    )
+            
+            elif update.effective_chat.id == DUVIDAS_GROUP_CHAT_ID:
+                # Mensagem para grupo de dúvidas
+                welcome_text = f"""🔗 *Bem-vindo ao Grupo de Dúvidas, {new_member.first_name}!*
 
-def main():
-    """Função principal"""
-    # Obtém o token do bot
-    token = os.getenv('TELEGRAM_BOT_TOKEN') or os.getenv('BOT_TOKEN')
-    if not token:
-        logger.error("Token do bot não encontrado! Verifique o arquivo .env")
-        return
+👋 Este é o espaço ideal para suas perguntas sobre trading!
+
+💡 Aqui você pode:
+• Tirar dúvidas sobre análises técnicas
+• Pedir ajuda com estratégias
+• Compartilhar experiências de trading
+• Aprender com a comunidade
+
+🎯 *Link da Mentoria:*
+[🎯 Mentoria Auge Traders]({MENTORIA_LINK})
+
+📋 *Dicas para melhor aproveitamento:*
+• Seja específico nas suas perguntas
+• Use prints/gráficos quando necessário
+• Respeite todos os membros
+• Mantenha o foco em aprendizado
+
+👥 **Nossa equipe** está pronta para ajudar!
+
+Vamos aprender juntos! 📚"""
+                
+                keyboard = [
+                    [InlineKeyboardButton("📊 Grupo de Dúvidas", url=DUVIDAS_GROUP_LINK)],
+                    [InlineKeyboardButton("🎯 Mentoria Day Trade", url=MENTORIA_LINK)]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await update.message.reply_text(
+                    welcome_text,
+                    parse_mode='Markdown',
+                    reply_markup=reply_markup,
+                    disable_web_page_preview=True
+                )
+            
+            else:
+                # Mensagem genérica para outros grupos
+                welcome_text = f"""👋 Olá {new_member.first_name}!
+
+Bem-vindo ao nosso grupo! 🎯
+
+[🔗 Grupo de Dúvidas]({DUVIDAS_GROUP_LINK})
+[🎯 Mentoria Auge Traders]({MENTORIA_LINK})
+
+👥 **Nossa equipe** está pronta para ajudar!"""
+                
+                keyboard = [
+                    [InlineKeyboardButton("📊 Grupo de Dúvidas", url=DUVIDAS_GROUP_LINK)],
+                    [InlineKeyboardButton("🎯 Mentoria Day Trade", url=MENTORIA_LINK)]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                await update.message.reply_text(
+                    welcome_text,
+                    parse_mode='Markdown',
+                    reply_markup=reply_markup,
+                    disable_web_page_preview=True
+                )
+            
+            logger.info(f"Mensagem de boas-vindas enviada para {new_member.first_name} ({new_member.id})")
     
-    # Cria diretórios necessários
-    os.makedirs('data', exist_ok=True)
-    os.makedirs('logs', exist_ok=True)
+    async def admin_stats(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Comando /stats - Estatísticas do bot (apenas admins)"""
+        if update.effective_user.id not in ADMIN_IDS:
+            await update.message.reply_text("❌ Você não tem permissão para usar este comando.")
+            return
+        
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Total de usuários
+        cursor.execute("SELECT COUNT(*) FROM users")
+        total_users = cursor.fetchone()[0]
+        
+        # Usuários ativos (últimos 30 dias)
+        cursor.execute("""
+            SELECT COUNT(DISTINCT user_id) FROM messages 
+            WHERE message_date >= datetime('now', '-30 days')
+        """)
+        active_users = cursor.fetchone()[0]
+        
+        # Total de mensagens
+        cursor.execute("SELECT COUNT(*) FROM messages")
+        total_messages = cursor.fetchone()[0]
+        
+        # Mensagens hoje
+        cursor.execute("""
+            SELECT COUNT(*) FROM messages 
+            WHERE date(message_date) = date('now')
+        """)
+        today_messages = cursor.fetchone()[0]
+        
+        conn.close()
+        
+        stats_text = f"""📊 *Estatísticas do Bot Auge Traders*
+
+👥 Total de usuários: {total_users}
+🟢 Usuários ativos (30 dias): {active_users}
+💬 Total de mensagens: {total_messages}
+📅 Mensagens hoje: {today_messages}
+
+📅 Atualizado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}"""
+        
+        await update.message.reply_text(stats_text, parse_mode='Markdown')
+        logger.info(f"Estatísticas solicitadas por admin {update.effective_user.id}")
     
-    # Cria a aplicação
-    application = Application.builder().token(token).build()
+    async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Processa mensagens do grupo"""
+        if update.message and update.message.text:
+            user = update.effective_user
+            chat = update.effective_chat
+            
+            # Adicionar usuário se não existir
+            self.add_user(user.id, user.username, user.first_name, user.last_name)
+            
+            # Registrar mensagem
+            self.log_message(user.id, update.message.text, chat.id)
     
-    # Inicializa componentes
-    async def post_init(app):
-        success = await initialize_components()
-        if not success:
-            logger.error("Falha ao inicializar componentes. Bot pode não funcionar corretamente.")
-    
-    application.post_init = post_init
-    
-    # Adiciona handlers básicos
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("status", status))
-    application.add_handler(CommandHandler("stats", stats_command))
-    application.add_handler(CommandHandler("links", links_command))
-    application.add_handler(CommandHandler("testwelcome", test_welcome_command))
-    
-    # Comando testmsg melhorado
-    async def testmsg_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if admin_handler and await admin_handler.is_admin(update.effective_user.id):
-            await show_all_automated_messages(update, context)
-        else:
-            await update.message.reply_text("❌ Comando disponível apenas para administradores.")
-    
-    application.add_handler(CommandHandler("testmsg", testmsg_wrapper))
-    
-    # Comandos para reunião semanal
-    async def reuniao_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if admin_handler and await admin_handler.is_admin(update.effective_user.id):
-            await send_meeting_reminder(update, context)
-        else:
-            await update.message.reply_text("❌ Comando disponível apenas para administradores.")
-    
-    async def setmeeting_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if admin_handler and await admin_handler.is_admin(update.effective_user.id):
-            await set_meeting_link(update, context)
-        else:
-            await update.message.reply_text("❌ Comando disponível apenas para administradores.")
-    
-    application.add_handler(CommandHandler("reuniao", reuniao_wrapper))
-    application.add_handler(CommandHandler("setmeeting", setmeeting_wrapper))
-    
-    # Handlers de admin corrigidos
-    async def broadcast_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if admin_handler:
-            message = ' '.join(context.args) if context.args else ''
-            await admin_handler.handle_broadcast(update, context, message)
-        else:
-            await update.message.reply_text("❌ Sistema administrativo não disponível.")
-    
-    async def users_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if admin_handler:
-            await admin_handler.handle_users_list(update, context)
-        else:
-            await update.message.reply_text("❌ Sistema administrativo não disponível.")
-    
-    async def test_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if admin_handler:
-            await admin_handler.handle_test_message(update, context)
-        else:
-            await update.message.reply_text("❌ Sistema administrativo não disponível.")
-    
-    async def setphoto_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if admin_handler:
-            await admin_handler.handle_setphoto_info(update, context)
-        else:
-            await update.message.reply_text("❌ Sistema administrativo não disponível.")
-    
-    async def adminhelp_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if admin_handler:
-            await admin_handler.handle_admin_help(update, context)
-        else:
-            await update.message.reply_text("❌ Sistema administrativo não disponível.")
-    
-    application.add_handler(CommandHandler("broadcast", broadcast_wrapper))
-    application.add_handler(CommandHandler("users", users_wrapper))
-    application.add_handler(CommandHandler("test", test_wrapper))
-    application.add_handler(CommandHandler("setphoto", setphoto_wrapper))
-    application.add_handler(CommandHandler("adminhelp", adminhelp_wrapper))
-    
-    # Handler para novos membros
-    async def handle_new_members_wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        logger.info(f"🔍 Novo membro detectado! Chat: {update.effective_chat.id}, Membros: {[m.first_name for m in update.message.new_chat_members]}")
-        if welcome_handler:
-            await welcome_handler.handle_new_members(update, context)
-        else:
-            logger.error("❌ WelcomeHandler não inicializado!")
-    
-    application.add_handler(MessageHandler(
-        filters.StatusUpdate.NEW_CHAT_MEMBERS, 
-        handle_new_members_wrapper
-    ))
-    
-    # Handler para todas as mensagens de texto
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, process_message))
-    
-    # Handler de erros
-    application.add_error_handler(error_handler)
-    
-    # Inicia o bot
-    logger.info("🚀 Bot Auge iniciado com todas as funcionalidades!")
-    logger.info("📋 Funcionalidades ativas:")
-    logger.info("   • Sistema de boas-vindas avançado")
-    logger.info("   • Funil automático de mensagens")
-    logger.info("   • Moderação inteligente")
-    logger.info("   • Rastreamento de links")
-    logger.info("   • Comandos administrativos")
-    logger.info("   • Estatísticas detalhadas")
-    
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    def run(self):
+        """Inicia o bot"""
+        if not BOT_TOKEN:
+            logger.error("Token do bot não encontrado! Verifique o arquivo .env")
+            return
+        
+        application = Application.builder().token(BOT_TOKEN).build()
+        
+        # Handlers de comandos
+        application.add_handler(CommandHandler("start", self.start_command))
+        application.add_handler(CommandHandler("stats", self.admin_stats))
+        
+        # Handlers de mensagens predefinidas (apenas admins)
+        application.add_handler(CommandHandler("morning", self.cmd_morning_alert))
+        application.add_handler(CommandHandler("alert", self.cmd_market_alert))
+        application.add_handler(CommandHandler("motivacao", self.cmd_motivational))
+        application.add_handler(CommandHandler("engajamento", self.cmd_engagement))
+        application.add_handler(CommandHandler("duvidas", self.cmd_doubts_reminder))
+        application.add_handler(CommandHandler("mentoria", self.cmd_mentoria_promo))
+        application.add_handler(CommandHandler("disciplina", self.cmd_discipline))
+        application.add_handler(CommandHandler("weekend", self.cmd_weekend))
+        application.add_handler(CommandHandler("motivacao_geral", self.cmd_motivation))
+        application.add_handler(CommandHandler("mensagens", self.cmd_list_messages))
+        
+        # Handlers de reunião
+        application.add_handler(CommandHandler("set_meeting", self.cmd_set_meeting))
+        application.add_handler(CommandHandler("test_meeting", self.cmd_test_meeting))
+        
+        # Handler para novos membros
+        application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, self.welcome_new_member))
+        
+        # Handler para todas as mensagens (logging)
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
+        
+        # Configurar agendamento automático de reuniões
+        self.setup_meeting_scheduler(application.job_queue)
+        
+        logger.info("🎯 Bot Auge Traders iniciado com sucesso!")
+        logger.info(f"Bot configurado para grupos: {GROUP_CHAT_ID}, {DUVIDAS_GROUP_CHAT_ID}")
+        
+        # Iniciar o bot
+        try:
+            application.run_polling()
+        except Exception as e:
+            logger.error(f"Erro ao executar o bot: {e}")
 
 if __name__ == '__main__':
-    main()
+    bot = AugeTradersBot()
+    bot.run()
