@@ -817,29 +817,52 @@ Bem-vindo ao nosso grupo! 🎯
         @self.flask_app.route('/health', methods=['GET'])
         def health_check():
             """Health check para Railway"""
-            return {'status': 'healthy', 'bot': 'Auge Traders'}
+            from flask import jsonify
+            return jsonify({'status': 'healthy', 'bot': 'Auge Traders'}), 200
+        
+        @self.flask_app.route('/', methods=['GET'])
+        def root():
+            """Endpoint raiz para verificação básica"""
+            from flask import jsonify
+            return jsonify({'message': 'Auge Traders Bot is running', 'status': 'ok'}), 200
     
     def run_webhook(self, application):
         """Executa o bot usando webhook (Railway)"""
         try:
-            # Configurar webhook
-            webhook_url = f"{WEBHOOK_URL}/{BOT_TOKEN}"
-            logger.info(f"Configurando webhook: {webhook_url}")
-            
             # Inicializar aplicação em thread separada
-            async def init_app():
-                await application.initialize()
-                await application.start()
-                await application.bot.set_webhook(url=webhook_url)
-                logger.info("Webhook configurado com sucesso!")
+            def init_telegram_app():
+                try:
+                    # Configurar webhook
+                    webhook_url = f"{WEBHOOK_URL}/{BOT_TOKEN}"
+                    logger.info(f"Configurando webhook: {webhook_url}")
+                    
+                    async def setup_webhook():
+                        await application.initialize()
+                        await application.start()
+                        await application.bot.set_webhook(url=webhook_url)
+                        logger.info("Webhook configurado com sucesso!")
+                    
+                    # Executar inicialização
+                    import asyncio
+                    asyncio.run(setup_webhook())
+                    
+                except Exception as e:
+                    logger.error(f"Erro ao configurar webhook: {e}")
+                    import traceback
+                    logger.error(f"Traceback: {traceback.format_exc()}")
             
-            # Executar inicialização
-            import asyncio
-            asyncio.run(init_app())
+            # Inicializar Telegram em thread separada para não bloquear Flask
+            import threading
+            telegram_thread = threading.Thread(target=init_telegram_app, daemon=True)
+            telegram_thread.start()
             
-            # Iniciar Flask
+            # Aguardar um pouco para o webhook ser configurado
+            import time
+            time.sleep(2)
+            
+            # Iniciar Flask (isso deve ser a última coisa, pois bloqueia)
             logger.info(f"Iniciando servidor Flask na porta {PORT}")
-            self.flask_app.run(host='0.0.0.0', port=PORT, debug=False)
+            self.flask_app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)
             
         except Exception as e:
             logger.error(f"Erro ao iniciar webhook: {e}")
