@@ -816,47 +816,63 @@ Bem-vindo ao nosso grupo! 🎯
         
         @self.flask_app.route('/health', methods=['GET'])
         def health_check():
-            """Health check simples para Railway"""
-            return 'OK', 200
+            """Health check ultra-simples - apenas confirma que Flask está rodando"""
+            import time
+            return f"HEALTHY - {int(time.time())}", 200
         
         @self.flask_app.route('/', methods=['GET'])
         def root():
             """Endpoint raiz para verificação básica"""
             return 'Auge Traders Bot Running', 200
+        
+        @self.flask_app.route('/status', methods=['GET'])
+        def status():
+            """Status detalhado para debug"""
+            import time
+            return {
+                "status": "running",
+                "timestamp": int(time.time()),
+                "flask_ready": True,
+                "port": PORT
+            }, 200
     
     def run_webhook(self, application):
         """Executa o bot usando webhook (Railway)"""
         try:
             logger.info(f"Iniciando servidor Flask na porta {PORT}")
             
-            # Configurar webhook de forma síncrona antes de iniciar Flask
-            async def setup_webhook():
+            # Configurar webhook em background após Flask estar rodando
+            def setup_webhook_background():
+                import time
+                time.sleep(5)  # Aguardar Flask estar totalmente operacional
+                
                 try:
                     webhook_url = f"{WEBHOOK_URL}/{BOT_TOKEN}"
-                    logger.info(f"Configurando webhook: {webhook_url}")
+                    logger.info(f"Configurando webhook em background: {webhook_url}")
                     
-                    await application.initialize()
-                    await application.start()
-                    await application.bot.set_webhook(url=webhook_url)
-                    logger.info("Webhook configurado com sucesso!")
+                    async def setup_webhook():
+                        await application.initialize()
+                        await application.start()
+                        await application.bot.set_webhook(url=webhook_url)
+                        logger.info("Webhook configurado com sucesso!")
+                    
+                    import asyncio
+                    asyncio.run(setup_webhook())
                     
                 except Exception as e:
-                    logger.error(f"Erro ao configurar webhook: {e}")
-                    # Continuar mesmo se webhook falhar
+                    logger.error(f"Erro ao configurar webhook em background: {e}")
             
-            # Executar configuração do webhook
-            import asyncio
-            try:
-                asyncio.run(setup_webhook())
-            except Exception as e:
-                logger.error(f"Falha na configuração do webhook, continuando: {e}")
+            # Iniciar configuração do webhook em thread separada
+            import threading
+            webhook_thread = threading.Thread(target=setup_webhook_background, daemon=True)
+            webhook_thread.start()
             
-            # Iniciar Flask
-            logger.info("Flask iniciando...")
-            self.flask_app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)
+            # Iniciar Flask imediatamente (prioridade máxima)
+            logger.info("Flask iniciando imediatamente...")
+            self.flask_app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True, use_reloader=False)
             
         except Exception as e:
-            logger.error(f"Erro ao iniciar webhook: {e}")
+            logger.error(f"Erro ao iniciar Flask: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
     
