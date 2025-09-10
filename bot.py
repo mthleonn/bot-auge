@@ -816,78 +816,43 @@ Bem-vindo ao nosso grupo! 🎯
         
         @self.flask_app.route('/health', methods=['GET'])
         def health_check():
-            """Health check para Railway"""
-            from flask import jsonify
-            try:
-                # Verificar se o bot está inicializado
-                if hasattr(self, 'application') and self.application:
-                    status = 'healthy'
-                    bot_status = 'running'
-                else:
-                    status = 'initializing'
-                    bot_status = 'starting'
-                
-                return jsonify({
-                    'status': status,
-                    'bot': 'Auge Traders',
-                    'bot_status': bot_status,
-                    'timestamp': datetime.now().isoformat()
-                }), 200
-            except Exception as e:
-                logger.error(f"Health check error: {e}")
-                return jsonify({
-                    'status': 'error',
-                    'bot': 'Auge Traders',
-                    'error': str(e)
-                }), 500
+            """Health check simples para Railway"""
+            return 'OK', 200
         
         @self.flask_app.route('/', methods=['GET'])
         def root():
             """Endpoint raiz para verificação básica"""
-            from flask import jsonify
-            return jsonify({'message': 'Auge Traders Bot is running', 'status': 'ok'}), 200
+            return 'Auge Traders Bot Running', 200
     
     def run_webhook(self, application):
         """Executa o bot usando webhook (Railway)"""
         try:
-            # Armazenar referência da aplicação para health check
-            self.application = application
-            
-            # Inicializar Flask imediatamente
             logger.info(f"Iniciando servidor Flask na porta {PORT}")
             
-            # Configurar webhook em thread separada após Flask estar rodando
-            def init_telegram_app():
+            # Configurar webhook de forma síncrona antes de iniciar Flask
+            async def setup_webhook():
                 try:
-                    # Aguardar Flask inicializar
-                    import time
-                    time.sleep(3)
-                    
-                    # Configurar webhook
                     webhook_url = f"{WEBHOOK_URL}/{BOT_TOKEN}"
                     logger.info(f"Configurando webhook: {webhook_url}")
                     
-                    async def setup_webhook():
-                        await application.initialize()
-                        await application.start()
-                        await application.bot.set_webhook(url=webhook_url)
-                        logger.info("Webhook configurado com sucesso!")
-                    
-                    # Executar inicialização
-                    import asyncio
-                    asyncio.run(setup_webhook())
+                    await application.initialize()
+                    await application.start()
+                    await application.bot.set_webhook(url=webhook_url)
+                    logger.info("Webhook configurado com sucesso!")
                     
                 except Exception as e:
                     logger.error(f"Erro ao configurar webhook: {e}")
-                    import traceback
-                    logger.error(f"Traceback: {traceback.format_exc()}")
+                    # Continuar mesmo se webhook falhar
             
-            # Inicializar Telegram em thread separada
-            import threading
-            telegram_thread = threading.Thread(target=init_telegram_app, daemon=True)
-            telegram_thread.start()
+            # Executar configuração do webhook
+            import asyncio
+            try:
+                asyncio.run(setup_webhook())
+            except Exception as e:
+                logger.error(f"Falha na configuração do webhook, continuando: {e}")
             
-            # Iniciar Flask (isso bloqueia, mas o health check já estará disponível)
+            # Iniciar Flask
+            logger.info("Flask iniciando...")
             self.flask_app.run(host='0.0.0.0', port=PORT, debug=False, threaded=True)
             
         except Exception as e:
